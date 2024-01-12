@@ -1,5 +1,10 @@
 use std::char;
 
+use serde::Serialize;
+
+mod receipt;
+
+#[derive(Serialize)]
 pub enum Source {
     TinkoffPay,
     SBPQR,
@@ -7,6 +12,7 @@ pub enum Source {
 }
 
 #[allow(non_camel_case_types)]
+#[derive(Serialize)]
 pub enum OperationInitiatorType {
     // Сustomer Initiated Credential-Not-Captured
     // Стандартный платеж.
@@ -70,7 +76,15 @@ impl OperationInitiatorType {
         }
     }
 
-    fn allowed_with_RebillId 
+    fn allowed_with_RebillId_at_charge(&self) -> Option<()> {
+        match self {
+            OperationInitiatorType::CIT_CNC => None,
+            OperationInitiatorType::CIT_CC => None,
+            OperationInitiatorType::CIT_COF => Some(()),
+            OperationInitiatorType::CIT_COF_R => Some(()),
+            OperationInitiatorType::CIT_COF_I => Some(()),
+        }
+    }
 
     // AFT – это автоматизированные терминалы сбора платежей,
     // часто используемые в транспортной системе для оплаты проезда.
@@ -103,22 +117,56 @@ impl OperationInitiatorType {
     }
 }
 
+#[derive(Serialize)]
+pub enum DeviceType {
+    SDK,
+    Desktop,
+    MobileWeb,
+}
+
+#[derive(Serialize)]
+pub enum PayMethod {
+    Common {
+        additional_properties: String,
+        operation_initiator_type: OperationInitiatorType,
+    },
+    TinkoffPay {
+        device: DeviceType,
+        device_os: String,
+        // Признак открытия в WebView
+        device_web_view: bool,
+        device_browser: String,
+        // Признак проведения операции через Tinkoff Pay по API
+        tinkoff_pay_web: bool,
+    },
+    YandexPay {
+        // Признак проведения операции через Yandex Pay
+        yandex_pay_web: bool,
+    },
+    // TODO: Implement LongPlay
+    LongPlay,
+}
+
 /// Максимальная длина для каждого передаваемого параметра:
 ///
 /// Ключ - 20 знаков
 /// Значение - 100 знаков.
+#[derive(Serialize)]
 pub struct PaymentData {
+    #[serde(skip_serializing_if = "Option::is_none")]
     phone: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     email: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     account: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     default_card: Option<String>,
-    tinkoff_pay_web: Option<bool>,
-    yandex_pay_web: Option<bool>,
-    device: Option<String>,
-    device_os: Option<String>,
-    device_web_view: Option<bool>,
-    device_browser: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     notification_enable_source: Option<Source>,
+    // Для осуществления привязки и одновременной оплаты по CБП
+    // необходимо передавать параметр "QR" = "true"
+    #[serde(skip_serializing_if = "Option::is_none")]
     qr: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     operation_initiator_type: Option<OperationInitiatorType>,
 }
