@@ -1,5 +1,4 @@
-use std::char;
-
+use rust_decimal::Decimal;
 use serde::Serialize;
 
 mod receipt;
@@ -19,18 +18,21 @@ pub enum OperationInitiatorType {
     //
     // Инициированная покупателем оплата без сохранения реквизитов карты
     // для последующего использования.
+    #[serde(rename = "0")]
     CIT_CNC,
     // Сustomer Initiated Credential-Captured
     // Стандартный платеж с созданием родительского рекуррентного платежа.
     //
     // Инициированная покупателем оплата c сохранением реквизитов карты
     // для последующего использования.
+    #[serde(rename = "1")]
     CIT_CC,
     // Сustomer Initiated Credential-on-File
     // Рекуррентный платеж, инициированный покупателем.
     //
     // Инициированная покупателем оплата по сохраненным реквизитам карты
     // (ранее была проведена операция с сохранением реквизитов CIT CC).
+    #[serde(rename = "2")]
     CIT_COF,
     // Merchant Initiated Credential-on-File, Recurring
     // Рекуррентный платеж, инициированный торговым предприятием.
@@ -41,6 +43,7 @@ pub enum OperationInitiatorType {
     // кабельное/спутниковое телевидение и т.п.
     // Сумма может быть определена заранее или становится известна
     // непосредственно перед оплатой.
+    #[serde(rename = "R")]
     CIT_COF_R,
     // Merchant Credential-on-File, Installment
     // Рекуррентный платеж, инициированный торговым предприятием.
@@ -52,20 +55,11 @@ pub enum OperationInitiatorType {
     // графиком платежей. График платежей может быть изменен по соглашению сторон,
     // т.е. суммы и даты платежей должны быть известны плательщику
     // (держателю карты) до момента проведения операции.
+    #[serde(rename = "I")]
     CIT_COF_I,
 }
 
 impl OperationInitiatorType {
-    fn as_char(&self) -> char {
-        match self {
-            OperationInitiatorType::CIT_CNC => '0',
-            OperationInitiatorType::CIT_CC => '1',
-            OperationInitiatorType::CIT_COF => '2',
-            OperationInitiatorType::CIT_COF_R => 'R',
-            OperationInitiatorType::CIT_COF_I => 'I',
-        }
-    }
-
     fn allowed_with_recurrent_init(&self) -> bool {
         match self {
             OperationInitiatorType::CIT_CNC => false,
@@ -76,7 +70,7 @@ impl OperationInitiatorType {
         }
     }
 
-    fn allowed_with_RebillId_at_charge(&self) -> Option<()> {
+    fn allowed_with_rebill_id_at_charge(&self) -> Option<()> {
         match self {
             OperationInitiatorType::CIT_CNC => None,
             OperationInitiatorType::CIT_CC => None,
@@ -125,6 +119,7 @@ pub enum DeviceType {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
 pub enum PayMethod {
     Common {
         additional_properties: String,
@@ -147,11 +142,30 @@ pub enum PayMethod {
     LongPlay,
 }
 
+/// Данные маркетплейса.
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct Shop {
+    /// Код магазина
+    shop_code: String,
+    /// Cумма в копейках, которая относится к указанному ShopCode
+    amount: Decimal,
+    /// Наименование товара
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>, // <= 128 characters
+    /// Сумма комиссии в копейках, удерживаемая из возмещения Партнера
+    /// в пользу Маркетплейса. Если не передано, используется комиссия,
+    /// указанная при регистрации.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    fee: Option<Decimal>,
+}
+
 /// Максимальная длина для каждого передаваемого параметра:
 ///
 /// Ключ - 20 знаков
 /// Значение - 100 знаков.
 #[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct PaymentData {
     #[serde(skip_serializing_if = "Option::is_none")]
     phone: Option<String>,
@@ -169,4 +183,10 @@ pub struct PaymentData {
     qr: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     operation_initiator_type: Option<OperationInitiatorType>,
+    /// Объект с данными Маркетплейса. Обязательный для маркетплейсов
+    #[serde(skip_serializing_if = "Option::is_none")]
+    shops: Option<Vec<Shop>>,
+    /// Динамический дескриптор точки
+    #[serde(skip_serializing_if = "Option::is_none")]
+    descriptor: Option<String>,
 }

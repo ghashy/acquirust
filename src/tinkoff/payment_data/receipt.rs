@@ -1,46 +1,61 @@
+use phonenumber::PhoneNumber;
+use rust_decimal::Decimal;
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 use time::PrimitiveDateTime;
 
 use crate::domain::email::Email;
 
 #[derive(Serialize)]
+pub struct CountryCode(String);
+
+impl CountryCode {
+    pub fn new(code: u16) -> Result<CountryCode, ()> {
+        if code > 999 {
+            Err(())
+        } else {
+            let mut s = code.to_string();
+            let len = s.len();
+            for _ in 0..3 - len {
+                s.insert(0, '0');
+            }
+            Ok(CountryCode(s))
+        }
+    }
+}
+
+#[derive(Serialize)]
 enum DocumentCode {
+    #[serde(rename = "21")]
     PassportRussianCitizen,
+    #[serde(rename = "22")]
     PassportRussianCitizenDiplomaticService,
+    #[serde(rename = "26")]
     TemporaryIdentityCard,
+    #[serde(rename = "27")]
     BirthCertificateRussianCitizen,
+    #[serde(rename = "28")]
     OtherRussianCitizenIdentityDocument,
+    #[serde(rename = "31")]
     ForeignCitizenPassport,
+    #[serde(rename = "32")]
     OtherForeignCitizenIdentityDocument,
+    #[serde(rename = "33")]
     ForeignDocumentRecognizedInternationalTreaty,
+    #[serde(rename = "34")]
     ResidencePermit,
+    #[serde(rename = "35")]
     TemporaryResidencePermit,
+    #[serde(rename = "36")]
     RefugeeApplicationConsiderationCertificate,
+    #[serde(rename = "37")]
     RefugeeCertificate,
+    #[serde(rename = "38")]
     OtherStatelessPersonIdentityDocument,
+    #[serde(rename = "40")]
     IdentityDocumentUnderConsideration,
 }
 
 impl DocumentCode {
-    fn get_code(&self) -> u32 {
-        match self {
-            DocumentCode::PassportRussianCitizen => 21,
-            DocumentCode::PassportRussianCitizenDiplomaticService => 22,
-            DocumentCode::TemporaryIdentityCard => 26,
-            DocumentCode::BirthCertificateRussianCitizen => 27,
-            DocumentCode::OtherRussianCitizenIdentityDocument => 28,
-            DocumentCode::ForeignCitizenPassport => 31,
-            DocumentCode::OtherForeignCitizenIdentityDocument => 32,
-            DocumentCode::ForeignDocumentRecognizedInternationalTreaty => 33,
-            DocumentCode::ResidencePermit => 34,
-            DocumentCode::TemporaryResidencePermit => 35,
-            DocumentCode::RefugeeApplicationConsiderationCertificate => 36,
-            DocumentCode::RefugeeCertificate => 37,
-            DocumentCode::OtherStatelessPersonIdentityDocument => 38,
-            DocumentCode::IdentityDocumentUnderConsideration => 40,
-        }
-    }
-
     fn get_description(&self) -> &str {
         match self {
             DocumentCode::PassportRussianCitizen => "Паспорт гражданина Российской Федерации",
@@ -73,7 +88,7 @@ pub struct ClientInfo {
     // Числовой код страны, гражданином которой является клиент.
     // Код страны указывается в соответствии с
     // Общероссийским классификатором стран мира ОКСМ
-    citizenship: u16,
+    citizenship: CountryCode,
     document_code: DocumentCode,
     // Реквизиты документа, удостоверяющего личность (например: серия и номер паспорта)
     document_data: String,
@@ -130,6 +145,26 @@ impl Serialize for EmailOrPhone {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct Payments {
+    /// Вид оплаты "Наличные". Сумма к оплате в копейках
+    #[serde(skip_serializing_if = "Option::is_none")]
+    cash: Option<Decimal>, // <= 14 characters
+    /// Вид оплаты "Безналичный"
+    electronic: Decimal, // <= 14 characters
+    /// Вид оплаты "Предварительная оплата (Аванс)"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    advance_payment: Option<Decimal>, // <= 14 characters
+    /// Вид оплаты "Постоплата (Кредит)"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    credit: Option<Decimal>, // <= 14 characters
+    /// Вид оплаты "Иная форма оплаты"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    provision: Option<Decimal>, // <= 14 characters
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
 pub struct Receipt {
     ffd_version: FfdVersion,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -142,4 +177,333 @@ pub struct Receipt {
     customer: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     customer_inn: Option<String>,
+    // Массив, содержащий в себе информацию о товарах.
+    items: Vec<Item>,
+    /// Детали платежа. Если объект не передан, будет автоматически
+    /// указана итоговая сумма чека с видом оплаты "Безналичный".
+    /// Если передан объект receipt.Payments, то значение в
+    /// Electronic должно быть равно итоговому значению Amount в методе Init.
+    /// При этом сумма введенных значений по всем видам оплат,
+    /// включая Electronic, должна быть равна сумме (Amount)
+    /// всех товаров, переданных в объекте receipt.Items.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    payments: Option<Payments>,
+}
+
+// ───── Item ─────────────────────────────────────────────────────────────── //
+
+#[derive(Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AgentSign {
+    BankPayingAgent,
+    BankPayingSubagent,
+    PayingAgent,
+    PayingSubagent,
+    Attorney,
+    CommissionAgent,
+    Another,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct AgentData {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    agent_sign: Option<AgentSign>,
+    /// Наименование операции.
+    /// Атрибут ОБЯЗАТЕЛЕН, если AgentSign передан в значениях
+    /// * `bank_paying_agent`
+    /// * `bank_paying_subagent`
+    #[serde(skip_serializing_if = "Option::is_none")]
+    operation_name: Option<String>, // <= 64 characters
+    /// Атрибут ОБЯЗАТЕЛЕН, если в AgentSign передан в значениях:
+    /// * `bank_paying_agent`
+    /// * `bank_paying_subagent`
+    #[serde(skip_serializing_if = "Option::is_none")]
+    operator_name: Option<String>, // <= 64 characters
+    /// Атрибут ОБЯЗАТЕЛЕН, если в AgentSign передан в значениях:
+    /// * `bank_paying_agent`
+    /// * `bank_paying_subagent`
+    #[serde(skip_serializing_if = "Option::is_none")]
+    operator_address: Option<String>, // <= 243 characters
+    ///  Атрибут обязателен, если в AgentSign передан в значениях:
+    /// * `bank_paying_agent`
+    /// * `bank_paying_subagent`
+    #[serde(skip_serializing_if = "Option::is_none")]
+    operator_inn: Option<String>, // <= 12 characters
+
+    // FIXME: check that phonenumber has correct form here:
+    /// Телефоны в формате `+{Ц}`
+    /// Атрибут ОБЯЗАТЕЛЕН, если в AgentSign передан в значениях:
+    /// * `bank_paying_agent`
+    /// * `bank_paying_subagent`
+    /// * `paying_agent`
+    /// * `paying_subagent`
+    #[serde(skip_serializing_if = "Option::is_none")]
+    phones: Option<Vec<PhoneNumber>>,
+    /// Телефоны в формате `+{Ц}`
+    /// Атрибут ОБЯЗАТЕЛЕН, если в AgentSign передан в значениях:
+    /// * `paying_agent`
+    /// * `paying_subagent`
+    #[serde(skip_serializing_if = "Option::is_none")]
+    receiver_phones: Option<Vec<PhoneNumber>>,
+    /// Телефоны в формате `+{Ц}`
+    /// Атрибут ОБЯЗАТЕЛЕН, если в AgentSign передан в значениях:
+    /// * `bank_paying_agent`
+    /// * `bank_paying_subagent`
+    #[serde(skip_serializing_if = "Option::is_none")]
+    transfer_phones: Option<Vec<PhoneNumber>>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct SupplierInfo {
+    /// Телефон поставщика, в формате `+{Ц}`
+    /// Атрибут ОБЯЗАТЕЛЕН, если передается значение AgentSign в объекте AgentData
+    #[serde(skip_serializing_if = "Option::is_none")]
+    phones: Option<Vec<PhoneNumber>>,
+    /// Наименование поставщика. Атрибут обязателен, если передается
+    /// значение AgentSign в объекте AgentData.
+    /// Внимание: в данные 239 символов включаются телефоны поставщика:
+    /// 4 символа на каждый телефон.
+    /// Например, если передано два телефона поставщика длиной 12 и 14 символов,
+    /// то максимальная длина наименования поставщика будет
+    /// 239 – (12 + 4) – (14 + 4) = 205 символов
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<String>, // <= 239 characters
+    /// ИНН поставщика, в формате ЦЦЦЦЦЦЦЦЦЦ.
+    /// Атрибут обязателен, если передается значение AgentSign в объекте AgentData.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    inn: Option<String>, // [ 10 .. 12 ] characters
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum VatType {
+    None,   // без НДС
+    Vat0,   // НДС по ставке 0%
+    Vat10,  // НДС по ставке 10%
+    Vat20,  // НДС по ставке 20%
+    Vat110, // НДС чека по расчетной ставке 10/110
+    Vat120, // НДС чека по расчетной ставке 20/120
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PaymentMethod {
+    FullPrepayment, // предоплата 100%
+    Prepayment,     // предоплата
+    Advance,        // аванс
+    FullPayment,    // полный расчет
+    PartialPayment, // частичный расчет и кредит
+    Credit,         // передача в кредит
+    CreditPayment,  // оплата кредита
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PaymentObject {
+    Commodity,                         // товар
+    Excise,                            // подакцизный товар
+    Job,                               // работа
+    Service,                           // услуга
+    GamblingBet,                       // ставка азартной игры
+    GamblingPrize,                     // выигрыш азартной игры
+    Lottery,                           // лотерейный билет
+    LotteryPrize,                      // выигрыш лотереи
+    IntellectualActivity, // предоставление результатов интеллектуальной деятельности
+    Payment,              // платеж
+    AgentCommission,      // агентское вознаграждение
+    Contribution,         // Выплата
+    PropertyRights,       // Имущественное право
+    Unrealization,        // Внереализационный доход
+    TaxReduction,         // Иные платежи и взносы
+    TradeFee,             // Торговый сбор
+    ResortTax,            // Курортный сбор
+    Pledge,               // Залог
+    IncomeDecrease,       // Расход
+    IePensionInsuranceWithoutPayments, // Взносы на ОПС ИП
+    IePensionInsuranceWithPayments, // Взносы на ОПС
+    IeMedicalInsuranceWithoutPayments, // Взносы на ОМС ИП
+    IeMedicalInsuranceWithPayments, // Взносы на ОМС
+    SocialInsurance,      // Взносы на ОСС
+    CasinoChips,          // Платеж казино
+    AgentPayment,         // Выдача ДС
+    ExcisableGoodsWithoutMarkingCode, // АТНМ
+    ExcisableGoodsWithMarkingCode, // АТМ
+    GoodsWithoutMarkingCode, // ТНМ
+    GoodsWithMarkingCode, // ТМ
+    Another,              // иной предмет расчета
+}
+
+#[derive(Serialize)]
+enum MeasurementUnit {
+    #[serde(rename = "шт")]
+    Piece,
+    #[serde(rename = "г")]
+    Gram,
+    #[serde(rename = "кг")]
+    Kilogram,
+    #[serde(rename = "т")]
+    Ton,
+    #[serde(rename = "см")]
+    Centimeter,
+    #[serde(rename = "дм")]
+    Decimeter,
+    #[serde(rename = "м")]
+    Meter,
+    #[serde(rename = "кв. см")]
+    SquareCentimeter,
+    #[serde(rename = "кв. дм")]
+    SquareDecimeter,
+    #[serde(rename = "кв. м")]
+    SquareMeter,
+    #[serde(rename = "мл")]
+    Milliliter,
+    #[serde(rename = "л")]
+    Liter,
+    #[serde(rename = "куб. м")]
+    CubicMeter,
+    #[serde(rename = "кВт · ч")]
+    KilowattHour,
+    #[serde(rename = "Гкал")]
+    Gigacalorie,
+    #[serde(rename = "сутки")]
+    Day,
+    #[serde(rename = "час")]
+    Hour,
+    #[serde(rename = "мин")]
+    Minute,
+    #[serde(rename = "с")]
+    Second,
+    #[serde(rename = "Кбайт")]
+    Kilobyte,
+    #[serde(rename = "Мбайт")]
+    Megabyte,
+    #[serde(rename = "Гбайт")]
+    Gigabyte,
+    #[serde(rename = "Тбайт")]
+    Terabyte,
+    Other(u8),
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "UPPERCASE")]
+pub enum MarkCodeType {
+    /// Код товара, формат которого не идентифицирован,
+    /// как один из реквизитов
+    Unknown,
+    /// Код товара в формате EAN-8
+    Ean8,
+    /// Код товара в формате EAN-13
+    Ean13,
+    /// Код товара в формате ITF-14
+    Itf14,
+    /// Код товара в формате GS1, нанесенный на товар,
+    /// не подлежащий маркировке
+    Gs10,
+    /// Код товара в формате GS1, нанесенный на товар,
+    /// подлежащий маркировке
+    Gs1m,
+    /// Код товара в формате короткого кода маркировки,
+    /// нанесенный на товар
+    Short,
+    /// Контрольно-идентификационный знак мехового изделия
+    Fur,
+    /// Код товара в формате ЕГАИС-2.0
+    Egais20,
+    /// Код товара в формате ЕГАИС-3.0
+    Egais30,
+    /// Код маркировки, как он был прочитан сканером
+    Rawcode,
+}
+
+/// Код маркировки в машиночитаемой форме, представленный в виде
+/// одного из видов кодов, формируемых в соответствии с требованиями,
+/// предусмотренными правилами, для нанесения на потребительскую упаковку,
+/// или на товары, или на товарный ярлык
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct MarkCode {
+    /// Тип штрих кода
+    mark_code_type: MarkCodeType,
+    /// Код маркировки
+    value: String,
+}
+
+/// Отраслевой реквизит предмета расчета.
+///
+/// Необходимо указывать только для товаров подлежащих обязательной
+/// маркировке средством идентификации и включение данного реквизита
+/// предусмотрено НПА отраслевого регулирования для соответствующей
+/// товарной группы.
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct SectoralItemProps {
+    federal_id: String,
+    date: PrimitiveDateTime,
+    number: String,
+    value: String,
+}
+
+// Атрибуты, предусмотренные в протоколе для отправки чеков
+// по маркируемым товарам, не являются обязательными для товаров
+// без маркировки. Если используется ФФД 1.2, но реализуемый товар -
+// не подлежит маркировке, то поля можно не отправлять или отправить со значением null.
+#[derive(Serialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct Item {
+    /// Данные агента. Обязателен, если используется агентская схема.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    agent_data: Option<AgentData>,
+    /// Данные поставщика платежного агента.
+    // Обязателен, если передается значение AgentSign в объекте AgentData.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    supplier_info: Option<SupplierInfo>,
+    name: String, // <= 128 characters
+    /// Цена в копейках
+    price: Decimal,
+    /// Максимальное количество символов - 8, где целая часть не более 5 знаков,
+    /// а дробная часть не более 3 знаков для `Атол`,
+    /// не более 2 знаков для `CloudPayments`
+    /// Значение «1», если передан объект `MarkCode`
+    quantity: Decimal, // <= 8 characters
+    /// Стоимость товара в копейках. Произведение Quantity и Price
+    amount: Decimal, // <= 10 characters
+    tax: VatType,
+    payment_method: PaymentMethod,
+    payment_object: PaymentObject,
+    /// Дополнительный реквизит предмета расчета.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    user_data: Option<String>,
+    /// Сумма акциза в рублях с учетом копеек, включенная в стоимость предмета расчета.
+    /// Целая часть не более 8 знаков;
+    /// дробная часть не более 2 знаков;
+    /// значение не может быть отрицательным.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    excise: Option<Decimal>,
+    /// Цифровой код страны происхождения товара в соответствии с
+    /// Общероссийским классификатором стран мира (3 цифры)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    country_code: Option<CountryCode>,
+    /// Номер таможенной декларации
+    #[serde(skip_serializing_if = "Option::is_none")]
+    declaration_number: Option<String>, // <= 32 characters
+    measurement_unit: MeasurementUnit,
+    /// Режим обработки кода маркировки. Должен принимать значение равное «0».
+    /// Включается в чек в случае, если предметом расчета является товар,
+    /// подлежащий обязательной маркировке средством идентификации
+    /// (соответствующий код в поле paymentObject)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    mark_processing_mode: Option<char>,
+    /// Включается в чек в случае, если предметом расчета является товар,
+    /// подлежащий обязательной маркировке средством идентификации
+    /// (соответствующий код в поле paymentObject)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    mark_code: Option<MarkCode>,
+    // TODO: Не является обязательным объектом, implement later.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    mark_quantity: Option<()>,
+    /// Отраслевой реквизит предмета расчета
+    #[serde(skip_serializing_if = "Option::is_none")]
+    sectoral_item_props: Option<SectoralItemProps>,
 }

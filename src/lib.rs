@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 mod domain;
 mod payment_service;
 mod tinkoff;
