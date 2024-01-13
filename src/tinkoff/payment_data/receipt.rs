@@ -1,27 +1,15 @@
+use std::num::ParseIntError;
+
+use garde::Validate;
 use phonenumber::PhoneNumber;
 use rust_decimal::Decimal;
-use serde::{ser::SerializeStruct, Serialize, Serializer};
-use time::PrimitiveDateTime;
+use serde::{ser::Error, ser::SerializeStruct, Serialize, Serializer};
+use time::{macros::format_description, PrimitiveDateTime};
 
-use crate::domain::email::Email;
+use crate::domain::{country_code::CountryCode, email::Email, kopeck::Kopeck};
 
-#[derive(Serialize)]
-pub struct CountryCode(String);
-
-impl CountryCode {
-    pub fn new(code: u16) -> Result<CountryCode, ()> {
-        if code > 999 {
-            Err(())
-        } else {
-            let mut s = code.to_string();
-            let len = s.len();
-            for _ in 0..3 - len {
-                s.insert(0, '0');
-            }
-            Ok(CountryCode(s))
-        }
-    }
-}
+pub static SIMPLE_DATE_FORMAT: &[time::format_description::FormatItem] =
+    format_description!("[day].[month].[year]");
 
 #[derive(Serialize)]
 enum DocumentCode {
@@ -78,12 +66,17 @@ impl DocumentCode {
 
 #[derive(Serialize)]
 pub enum FfdVersion {
+    #[serde(rename = "1.2")]
     Ver1_2,
+    #[serde(rename = "1.05")]
     Ver1_05,
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Validate)]
+#[serde(rename_all = "PascalCase")]
+#[garde(allow_unvalidated)]
 pub struct ClientInfo {
+    #[serde(serialize_with = "serialize_date_simple")]
     birth_date: PrimitiveDateTime,
     // Числовой код страны, гражданином которой является клиент.
     // Код страны указывается в соответствии с
@@ -93,7 +86,8 @@ pub struct ClientInfo {
     // Реквизиты документа, удостоверяющего личность (например: серия и номер паспорта)
     document_data: String,
     // Адрес клиента, грузополучателя
-    address: String, // should be <= 256 characters
+    #[garde(length(max = 256))]
+    address: String,
 }
 
 // Система налогообложения
@@ -114,7 +108,6 @@ pub enum Taxation {
     Patent,
 }
 
-/// <= 64 characters
 pub enum EmailOrPhone {
     Email(Email),
     Phone(phonenumber::PhoneNumber),
@@ -130,14 +123,27 @@ impl Serialize for EmailOrPhone {
             EmailOrPhone::Email(email) => {
                 let mut state =
                     serializer.serialize_struct("EmailOrPhone", 1)?;
-                state.serialize_field("email", email.as_ref())?;
+                let email = email.as_ref();
+                if email.len() > 64 {
+                    return Err(S::Error::custom(
+                        "Email length exceeds 64 characters",
+                    ));
+                }
+                state.serialize_field("email", email)?;
                 state.end()
             }
             EmailOrPhone::Phone(phone) => {
                 let mut state =
                     serializer.serialize_struct("EmailOrPhone", 1)?;
                 // FIXME: test how phone.to_string looks. Is it correct?
-                state.serialize_field("phone", &phone.to_string())?;
+                let phone_number =
+                    phone.format().mode(phonenumber::Mode::E164).to_string();
+                if phone_number.len() > 64 {
+                    return Err(S::Error::custom(
+                        "Phone number length exceeds 64 characters",
+                    ));
+                }
+                state.serialize_field("phone", &phone_number)?;
                 state.end()
             }
         }
@@ -149,18 +155,18 @@ impl Serialize for EmailOrPhone {
 pub struct Payments {
     /// Вид оплаты "Наличные". Сумма к оплате в копейках
     #[serde(skip_serializing_if = "Option::is_none")]
-    cash: Option<Decimal>, // <= 14 characters
+    cash: Option<Kopeck>,
     /// Вид оплаты "Безналичный"
-    electronic: Decimal, // <= 14 characters
+    electronic: Kopeck,
     /// Вид оплаты "Предварительная оплата (Аванс)"
     #[serde(skip_serializing_if = "Option::is_none")]
-    advance_payment: Option<Decimal>, // <= 14 characters
+    advance_payment: Option<Kopeck>,
     /// Вид оплаты "Постоплата (Кредит)"
     #[serde(skip_serializing_if = "Option::is_none")]
-    credit: Option<Decimal>, // <= 14 characters
+    credit: Option<Kopeck>,
     /// Вид оплаты "Иная форма оплаты"
     #[serde(skip_serializing_if = "Option::is_none")]
-    provision: Option<Decimal>, // <= 14 characters
+    provision: Option<Kopeck>,
 }
 
 #[derive(Serialize)]
@@ -506,4 +512,31 @@ pub struct Item {
     /// Отраслевой реквизит предмета расчета
     #[serde(skip_serializing_if = "Option::is_none")]
     sectoral_item_props: Option<SectoralItemProps>,
+}
+
+// ───── Functions ────────────────────────────────────────────────────────── //
+
+fn serialize_date_simple<S>(
+    date: &PrimitiveDateTime,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let s = date.format(SIMPLE_DATE_FORMAT).map_err(S::Error::custom)?;
+    serializer.serialize_str(&s)
+}
+
+fn is_valid_formatted_decimal_length(
+    cash: Option<Decimal>,
+    max_length: usize,
+    scale: u32,
+) -> bool {
+    match cash {
+        Some(value) => {
+            let value_str = value.round_dp(scale).to_string(); // Rounds the Decimal to 'scale' decimal places before converting to string
+            value_str.len() <= max_length
+        }
+        None => true, // Assuming a None value is also valid
+    }
 }

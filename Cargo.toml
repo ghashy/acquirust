@@ -18,14 +18,15 @@ tokio = { version = "1.35.1", features = [
   "signal",
 ] }
 rust_decimal = "1.33.1"
-uuid = { version = "1.6.1", features = ["v4"] }
-url = "2.5.0"
+uuid = { version = "1.6.1", features = ["v4", "serde"] }
+url = { version = "2.5.0", features = ["serde"] }
 time = { version = "0.3.31", features = ["local-offset", "macros", "parsing", "serde"] }
 serde = { version = "1.0.195", features = ["derive"] }
 serde_json = "1.0.111"
 garde = { version = "0.17.0", features = ["derive"] }
 thiserror = "1.0.56"
 phonenumber = "0.3"
+tracing = "0.1.40"
 
 [dev-dependencies]
 fake = "2.9.2"

@@ -1,3 +1,8 @@
 pub trait PaymentService {
-    async fn init_payment(&self);
+    type PaymentData;
+    type InitPaymentResponse;
+    async fn init_payment(
+        &self,
+        data: Self::PaymentData,
+    ) -> Self::InitPaymentResponse;
 }

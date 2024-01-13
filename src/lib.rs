@@ -1,10 +1,15 @@
 #![allow(dead_code)]
 
 mod domain;
+mod manager;
 mod payment_service;
 mod tinkoff;
 
 pub(crate) use domain::email::{Email, EmailError};
+
+pub use manager::PaymentManager;
+pub use tinkoff::TinkoffInitPaymentResponse;
+pub use tinkoff::TinkoffPaymentService;
 
 pub(crate) fn error_chain_fmt(
     e: &impl std::error::Error,
