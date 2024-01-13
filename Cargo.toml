@@ -27,6 +27,7 @@ garde = { version = "0.17.0", features = ["derive"] }
 thiserror = "1.0.56"
 phonenumber = "0.3"
 tracing = "0.1.40"
+sha2 = "0.10.8"
 
 [dev-dependencies]
 fake = "2.9.2"

@@ -5,11 +5,9 @@ mod manager;
 mod payment_service;
 mod tinkoff;
 
-pub(crate) use domain::email::{Email, EmailError};
-
-pub use manager::PaymentManager;
-pub use tinkoff::TinkoffInitPaymentResponse;
-pub use tinkoff::TinkoffPaymentService;
+pub use domain::kopeck::Kopeck;
+pub use tinkoff::payment::OrderId;
+pub use tinkoff::payment::Payment;
 
 pub(crate) fn error_chain_fmt(
     e: &impl std::error::Error,

@@ -1,8 +1,6 @@
 use rust_decimal::Decimal;
 use serde::Serialize;
 
-mod receipt;
-
 #[derive(Serialize)]
 pub enum Source {
     TinkoffPay,
@@ -142,24 +140,6 @@ pub enum PayMethod {
     LongPlay,
 }
 
-/// Данные маркетплейса.
-#[derive(Serialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct Shop {
-    /// Код магазина
-    shop_code: String,
-    /// Cумма в копейках, которая относится к указанному ShopCode
-    amount: Decimal,
-    /// Наименование товара
-    #[serde(skip_serializing_if = "Option::is_none")]
-    name: Option<String>, // <= 128 characters
-    /// Сумма комиссии в копейках, удерживаемая из возмещения Партнера
-    /// в пользу Маркетплейса. Если не передано, используется комиссия,
-    /// указанная при регистрации.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    fee: Option<Decimal>,
-}
-
 /// Максимальная длина для каждого передаваемого параметра:
 ///
 /// Ключ - 20 знаков
@@ -183,10 +163,4 @@ pub struct PaymentData {
     qr: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     operation_initiator_type: Option<OperationInitiatorType>,
-    /// Объект с данными Маркетплейса. Обязательный для маркетплейсов
-    #[serde(skip_serializing_if = "Option::is_none")]
-    shops: Option<Vec<Shop>>,
-    /// Динамический дескриптор точки
-    #[serde(skip_serializing_if = "Option::is_none")]
-    descriptor: Option<String>,
 }
