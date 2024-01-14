@@ -23,6 +23,7 @@ impl std::fmt::Debug for KopeckParseError {
 pub struct Kopeck(u32);
 
 impl Kopeck {
+    /// Scale should be equal 2, and mantissa length should be <= 10 symbols.
     pub fn from_rub(mut rub: Decimal) -> Result<Kopeck, KopeckParseError> {
         if rub.scale() != 2 {
             tracing::warn!(

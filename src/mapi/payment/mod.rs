@@ -7,8 +7,9 @@ use time::OffsetDateTime;
 use url::Url;
 
 use self::receipt::Receipt;
-use super::payment_data::PaymentData;
-use crate::{domain::kopeck::Kopeck, error_chain_fmt};
+use super::payment_data::{OperationInitiatorType, PaymentData};
+use crate::domain::Kopeck;
+use crate::error_chain_fmt;
 
 pub mod receipt;
 
@@ -109,12 +110,32 @@ impl Shop {
     }
 }
 
+#[derive(Debug)]
+pub enum TerminalType {
+    /// ECOM – это терминалы, предназначенные для электронной коммерции.
+    /// Они могут использоваться в розничной торговле для обработки платежных карт,
+    /// мобильных платежей и других видов электронных платежей.
+    /// Такие терминалы обычно предоставляют возможность безналичной оплаты
+    /// за товары и услуги в интернет-магазинах или в торговых точках.
+    ECOM,
+    /// AFT – это автоматизированные терминалы сбора платежей,
+    /// часто используемые в транспортной системе для оплаты проезда.
+    /// К примеру, это могут быть терминалы для продажи билетов или
+    /// пополнения транспортных карт в метро,
+    /// на автобусных станциях или на железнодорожных вокзалах.
+    AFT,
+}
+
 #[derive(thiserror::Error)]
 pub enum PaymentParseError {
     #[error("Validation error")]
     ValidationError(#[from] garde::Report),
     #[error("Failed to parse date")]
     DateParseError(#[from] time::Error),
+    #[error("Given OperationInitiatorType: {0:?} is not compatible with recurrent Init method")]
+    NotAllowedWithInitError(OperationInitiatorType),
+    #[error("Given OperationInitiatorType: {0:?} is not compatible with given terminal type: {1:?}")]
+    NotCompatibleTerminalError(OperationInitiatorType, TerminalType),
 }
 
 impl std::fmt::Debug for PaymentParseError {
@@ -130,6 +151,7 @@ impl Payment {
         terminal_key: &str,
         amount: Kopeck,
         order_id: OrderId,
+        terminal_type: TerminalType,
     ) -> PaymentBuilder {
         PaymentBuilder {
             terminal_key: terminal_key.to_string(),
@@ -149,9 +171,13 @@ impl Payment {
             shops: None,
             descriptor: None,
             token: None,
+            terminal_type,
         }
     }
     pub(super) fn inner(self) -> PaymentBuilder {
+        self.0
+    }
+    pub fn innertest(self) -> PaymentBuilder {
         self.0
     }
 }
@@ -197,6 +223,8 @@ pub struct PaymentBuilder {
     #[serde(skip_serializing_if = "Option::is_none")]
     descriptor: Option<String>,
     token: Option<String>,
+    #[serde(skip)]
+    terminal_type: TerminalType,
 }
 
 impl PaymentBuilder {
@@ -223,7 +251,7 @@ impl PaymentBuilder {
         self
     }
     /// Для регистрации автоплатежа - обязателен.
-    pub fn is_recurrent(mut self, is: bool) -> Self {
+    pub fn with_recurrent(mut self, is: bool) -> Self {
         self.recurrent = if is { "Y".to_string() } else { "N".to_string() };
         self
     }
@@ -296,7 +324,26 @@ impl PaymentBuilder {
     }
     pub fn build(mut self) -> Result<Payment, PaymentParseError> {
         self.validate(&())?;
-        // FIXME: we should check all inner relations before building
+        if let Some(ref pd) = self.data {
+            if let Some(init_type) = pd.initiator_type() {
+                if self.recurrent.eq("Y")
+                    && !init_type.allowed_with_recurrent_init()
+                {
+                    return Err(PaymentParseError::NotAllowedWithInitError(
+                        init_type.clone(),
+                    ));
+                }
+                if init_type
+                    .validate_terminal_type(&self.terminal_type)
+                    .is_err()
+                {
+                    return Err(PaymentParseError::NotCompatibleTerminalError(
+                        init_type.clone(),
+                        self.terminal_type,
+                    ));
+                }
+            }
+        }
         let token = self.generate_token()?;
         self.token = Some(token);
         Ok(Payment(self))
@@ -399,6 +446,7 @@ mod tests {
             shops: None,
             descriptor: None,
             token: None,
+            terminal_type: TerminalType::ECOM,
         };
         let s = serde_json::to_string_pretty(&b).unwrap();
         println!("{s}");

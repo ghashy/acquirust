@@ -1,10 +1,13 @@
 use garde::Validate;
 use phonenumber::PhoneNumber;
 use rust_decimal::Decimal;
+use serde::ser::SerializeSeq;
 use serde::{ser::Error, Serialize, Serializer};
 use time::PrimitiveDateTime;
 
-use crate::{domain::country_code::CountryCode, error_chain_fmt, Kopeck};
+use crate::domain::CountryCode;
+use crate::domain::Kopeck;
+use crate::error_chain_fmt;
 
 // ───── AgentData ────────────────────────────────────────────────────────── //
 
@@ -113,6 +116,9 @@ impl AgentData {
             | AgentSignParams::Another => Default::default(),
         }
     }
+    pub(super) fn is_agent_sign_set(&self) -> bool {
+        self.agent_sign.is_some()
+    }
 }
 
 #[derive(Default)]
@@ -178,7 +184,10 @@ impl AgentDataBuilder {
 #[serde(rename_all = "PascalCase")]
 #[garde(allow_unvalidated)]
 pub struct SupplierInfo {
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize_phonenumber_vec"
+    )]
     phones: Option<Vec<PhoneNumber>>,
     /// Наименование поставщика.
     /// Внимание: в данные 239 символов включаются телефоны поставщика:
@@ -216,6 +225,12 @@ pub enum ItemParseError {
     SupplierInfoError,
     #[error("Validation error")]
     ValidationError(#[from] garde::Report),
+    #[error("Only one ffd item can be presented")]
+    BothFfdVersionPresentedError,
+    #[error("When MarkCode is set, quantity should be 1, but got {0}")]
+    WrongQuantityValueError(Decimal),
+    #[error("Bad quantity value: {0}")]
+    BadQuantityValueError(String),
 }
 
 impl std::fmt::Debug for ItemParseError {
@@ -249,7 +264,7 @@ pub enum PaymentMethod {
 
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
-pub enum PaymentObject {
+pub enum PaymentObjectFFD_12 {
     Commodity,                         // товар
     Excise,                            // подакцизный товар
     Job,                               // работа
@@ -281,6 +296,24 @@ pub enum PaymentObject {
     GoodsWithoutMarkingCode, // ТНМ
     GoodsWithMarkingCode, // ТМ
     Another,              // иной предмет расчета
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PaymentObjectFFD_105 {
+    Commodity,
+    Excise,
+    Job,
+    Service,
+    GamblingBet,
+    GamblingPrize,
+    Lottery,
+    LotteryPrize,
+    IntellectualActivity,
+    Payment,
+    AgentCommission,
+    Composite,
+    Another,
 }
 
 #[derive(Serialize)]
@@ -398,35 +431,11 @@ pub struct SectoralItemProps {
     pub value: String,
 }
 
-// Атрибуты, предусмотренные в протоколе для отправки чеков
-// по маркируемым товарам, не являются обязательными для товаров
-// без маркировки. Если используется ФФД 1.2, но реализуемый товар -
-// не подлежит маркировке, то поля можно не отправлять или отправить со значением null.
 #[derive(Serialize, Validate)]
-#[serde(rename_all = "PascalCase")]
 #[garde(allow_unvalidated)]
-pub struct Item {
-    /// Данные агента. Обязателен, если используется агентская схема.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    agent_data: Option<AgentData>,
-    /// Данные поставщика платежного агента.
-    // Обязателен, если передается значение AgentSign в объекте AgentData.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    supplier_info: Option<SupplierInfo>,
-    #[garde(length(max = 128))]
-    name: String,
-    /// Цена в копейках
-    price: Kopeck,
-    /// Максимальное количество символов - 8, где целая часть не более 5 знаков,
-    /// а дробная часть не более 3 знаков для `Атол`,
-    /// не более 2 знаков для `CloudPayments`
-    /// Значение «1», если передан объект `MarkCode`
-    quantity: Decimal,
-    /// Стоимость товара в копейках. Произведение Quantity и Price
-    amount: Kopeck,
-    tax: VatType,
+pub struct Ffd12Data {
+    payment_object: PaymentObjectFFD_12,
     payment_method: PaymentMethod,
-    payment_object: PaymentObject,
     /// Дополнительный реквизит предмета расчета.
     #[serde(skip_serializing_if = "Option::is_none")]
     user_data: Option<String>,
@@ -467,80 +476,41 @@ pub struct Item {
     sectoral_item_props: Option<SectoralItemProps>,
 }
 
-impl Item {
+impl Ffd12Data {
     pub fn builder(
-        name: String,
-        price: Kopeck,
-        quantity: Decimal,
-        amount: Kopeck,
-        tax: VatType,
-        payment_object: PaymentObject,
+        payment_object: PaymentObjectFFD_12,
+        payment_method: PaymentMethod,
         measurement_unit: MeasurementUnit,
-    ) -> ItemBuilder {
-        ItemBuilder {
-            agent_data: None,
-            supplier_info: None,
-            name,
-            price,
-            quantity,
-            amount,
-            tax,
-            payment_method: PaymentMethod::FullPrepayment,
+    ) -> Ffd12DataBuilder {
+        Ffd12DataBuilder {
             payment_object,
+            payment_method,
+            measurement_unit,
             user_data: None,
             excise: None,
             country_code: None,
             declaration_number: None,
-            measurement_unit,
             mark_processing_mode: None,
             mark_code: None,
-            mark_quantity: None,
             sectoral_item_props: None,
         }
     }
 }
 
-pub struct ItemBuilder {
-    agent_data: Option<AgentData>,
-    supplier_info: Option<SupplierInfo>,
-    name: String,
-    price: Kopeck,
-    quantity: Decimal,
-    amount: Kopeck,
-    tax: VatType,
+pub struct Ffd12DataBuilder {
+    payment_object: PaymentObjectFFD_12,
     payment_method: PaymentMethod,
-    payment_object: PaymentObject,
+    measurement_unit: MeasurementUnit,
     user_data: Option<String>,
     excise: Option<Decimal>,
     country_code: Option<CountryCode>,
     declaration_number: Option<String>,
-    measurement_unit: MeasurementUnit,
     mark_processing_mode: Option<char>,
     mark_code: Option<MarkCode>,
-    mark_quantity: Option<()>,
     sectoral_item_props: Option<SectoralItemProps>,
 }
 
-impl ItemBuilder {
-    /// Данные агента.
-    ///
-    /// Если передается значение AgentSign в объекте AgentData,
-    /// SupplierInfo должен быть полностью инициализирован,
-    /// иначе `build` вернет ошибку.
-    pub fn with_agent_data(mut self, agent_data: AgentData) -> Self {
-        self.agent_data = Some(agent_data);
-        self
-    }
-    /// Данные поставщика платежного агента.
-    pub fn with_supplier_info(mut self, info: SupplierInfo) -> Self {
-        self.supplier_info = Some(info);
-        self
-    }
-    /// Признак способа расчёта.
-    pub fn with_payment_method(mut self, method: PaymentMethod) -> Self {
-        self.payment_method = method;
-        self
-    }
+impl Ffd12DataBuilder {
     /// Дополнительный реквизит предмета расчета.
     pub fn with_user_data(mut self, data: String) -> Self {
         self.user_data = Some(data);
@@ -585,6 +555,210 @@ impl ItemBuilder {
         self.sectoral_item_props = Some(props);
         self
     }
+    pub fn build(self) -> Result<Ffd12Data, garde::Report> {
+        let data = Ffd12Data {
+            payment_object: self.payment_object,
+            payment_method: self.payment_method,
+            user_data: self.user_data,
+            excise: self.excise,
+            country_code: self.country_code,
+            declaration_number: self.declaration_number,
+            measurement_unit: self.measurement_unit,
+            mark_processing_mode: self.mark_processing_mode,
+            mark_code: self.mark_code,
+            mark_quantity: None,
+            sectoral_item_props: self.sectoral_item_props,
+        };
+        data.validate(&())?;
+        Ok(data)
+    }
+}
+
+#[derive(Serialize, Validate)]
+#[serde(rename_all = "PascalCase")]
+#[garde(allow_unvalidated)]
+pub struct Ffd105Data {
+    #[serde(skip_serializing_if = "Option::is_none", rename = "Ean13")]
+    #[garde(length(max = 300))]
+    ean_13: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    shop_code: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    payment_object: Option<PaymentObjectFFD_105>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    payment_method: Option<PaymentMethod>,
+}
+
+impl Ffd105Data {
+    pub fn builder() -> Ffd105DataBuilder {
+        Default::default()
+    }
+}
+
+#[derive(Default)]
+pub struct Ffd105DataBuilder {
+    ean_13: Option<String>,
+    shop_code: Option<String>,
+    payment_object: Option<PaymentObjectFFD_105>,
+    payment_method: Option<PaymentMethod>,
+}
+
+impl Ffd105DataBuilder {
+    /// Признак способа расчёта.
+    pub fn with_payment_method(mut self, method: PaymentMethod) -> Self {
+        self.payment_method = Some(method);
+        self
+    }
+    /// Штрих-код в требуемом формате. В зависимости от типа кассы
+    /// требования могут отличаться:
+    ///
+    /// АТОЛ Онлайн - шестнадцатеричное представление с пробелами.
+    /// Максимальная длина – 32 байта
+    /// (^[a-fA-F0-9]{2}$)|(^([afA-F0-9]{2}\s){1,31}[a-fA-F0-9]{2}$)
+    /// Пример:
+    /// 00 00 00 01 00 21 FA 41 00 23 05 41 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 12 00 AB 00
+    /// CloudKassir - длина строки: четная, от 8 до 150 байт, т.е.
+    /// от 16 до 300 ASCII символов ['0' - '9' , 'A' - 'F' ]
+    /// шестнадцатеричного представления кода маркировки товара.
+    /// Пример: 303130323930303030630333435
+    /// OrangeData - строка, содержащая base64 кодированный массив
+    /// от 8 до 32 байт Пример: igQVAAADMTIzNDU2Nzg5MDEyMwAAAAAAAQ==
+    /// В случае передачи в запросе параметра Ean13 не прошедшего валидацию,
+    /// возвращается неуспешный ответ с текстом ошибки в параметре
+    /// message = "Неверный параметр Ean13".
+    pub fn with_ean_13(mut self, ean: &str) -> Self {
+        self.ean_13 = Some(ean.to_string());
+        self
+    }
+    /// Код магазина. Для параметра ShopСode необходимо использовать
+    /// значение параметра `Submerchant_ID`, полученного в ответ при
+    /// регистрации магазинов через xml.
+    /// Если xml не используется, передавать поле не нужно
+    pub fn with_shop_code(mut self, code: &str) -> Self {
+        self.shop_code = Some(code.to_string());
+        self
+    }
+    /// Признак предмета расчёта.
+    pub fn with_payment_object(mut self, obj: PaymentObjectFFD_105) -> Self {
+        self.payment_object = Some(obj);
+        self
+    }
+    pub fn build(self) -> Result<Ffd105Data, garde::Report> {
+        let data = Ffd105Data {
+            ean_13: self.ean_13,
+            shop_code: self.shop_code,
+            payment_object: self.payment_object,
+            payment_method: self.payment_method,
+        };
+        data.validate(&())?;
+        Ok(data)
+    }
+}
+
+pub enum CashBoxType {
+    Atol,
+    CloudPayments,
+}
+
+// Атрибуты, предусмотренные в протоколе для отправки чеков
+// по маркируемым товарам, не являются обязательными для товаров
+// без маркировки. Если используется ФФД 1.2, но реализуемый товар -
+// не подлежит маркировке, то поля можно не отправлять или отправить со значением null.
+#[derive(Serialize, Validate)]
+#[serde(rename_all = "PascalCase")]
+#[garde(allow_unvalidated)]
+pub struct Item {
+    // We don't validate it, because it validated on build
+    /// Данные агента. Обязателен, если используется агентская схема.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    agent_data: Option<AgentData>,
+    /// Данные поставщика платежного агента.
+    // Обязателен, если передается значение AgentSign в объекте AgentData.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[garde(dive)]
+    supplier_info: Option<SupplierInfo>,
+    #[garde(length(max = 128))]
+    name: String,
+    /// Цена в копейках
+    price: Kopeck,
+    /// Максимальное количество символов - 8, где целая часть не более 5 знаков,
+    /// а дробная часть не более 3 знаков для `Атол`,
+    /// не более 2 знаков для `CloudPayments`
+    /// Значение «1», если передан объект `MarkCode`
+    // #[garde(custom(validate_quantity))]
+    quantity: Decimal,
+    /// Стоимость товара в копейках. Произведение Quantity и Price
+    amount: Kopeck,
+    tax: VatType,
+
+    // We don't validate it, because it validated on build
+    #[serde(flatten)]
+    pub(super) ffd_105_data: Option<Ffd105Data>,
+    // We don't validate it, because it validated on build
+    #[serde(flatten)]
+    pub(super) ffd_12_data: Option<Ffd12Data>,
+}
+
+impl Item {
+    pub fn builder(
+        name: &str,
+        price: Kopeck,
+        quantity: Decimal,
+        amount: Kopeck,
+        tax: VatType,
+        cashbox_type: CashBoxType,
+    ) -> ItemBuilder {
+        ItemBuilder {
+            agent_data: None,
+            supplier_info: None,
+            name: name.to_string(),
+            price,
+            quantity,
+            amount,
+            tax,
+            ffd_105_data: None,
+            ffd_12_data: None,
+            cashbox_type,
+        }
+    }
+}
+
+pub struct ItemBuilder {
+    cashbox_type: CashBoxType,
+    agent_data: Option<AgentData>,
+    supplier_info: Option<SupplierInfo>,
+    name: String,
+    price: Kopeck,
+    quantity: Decimal,
+    amount: Kopeck,
+    tax: VatType,
+    ffd_105_data: Option<Ffd105Data>,
+    ffd_12_data: Option<Ffd12Data>,
+}
+
+impl ItemBuilder {
+    /// Данные агента.
+    ///
+    /// Если передается значение AgentSign в объекте AgentData,
+    /// SupplierInfo должен быть полностью инициализирован,
+    /// иначе `build` вернет ошибку.
+    pub fn with_agent_data(mut self, agent_data: AgentData) -> Self {
+        self.agent_data = Some(agent_data);
+        self
+    }
+    /// Данные поставщика платежного агента.
+    pub fn with_supplier_info(mut self, info: SupplierInfo) -> Self {
+        self.supplier_info = Some(info);
+        self
+    }
+    pub fn with_ffd_105_data(mut self, data: Ffd105Data) -> Self {
+        self.ffd_105_data = Some(data);
+        self
+    }
+    pub fn with_ffd_12_data(mut self, data: Ffd12Data) -> Self {
+        self.ffd_12_data = Some(data);
+        self
+    }
     pub fn build(self) -> Result<Item, ItemParseError> {
         let item = Item {
             agent_data: self.agent_data,
@@ -594,27 +768,55 @@ impl ItemBuilder {
             quantity: self.quantity,
             amount: self.amount,
             tax: self.tax,
-            payment_method: self.payment_method,
-            payment_object: self.payment_object,
-            user_data: self.user_data,
-            excise: self.excise,
-            country_code: self.country_code,
-            declaration_number: self.declaration_number,
-            measurement_unit: self.measurement_unit,
-            mark_processing_mode: self.mark_processing_mode,
-            mark_code: self.mark_code,
-            mark_quantity: self.mark_quantity,
-            sectoral_item_props: self.sectoral_item_props,
+            ffd_105_data: self.ffd_105_data,
+            ffd_12_data: self.ffd_12_data,
         };
         item.validate(&())?;
-        if item.agent_data.is_some() {
-            // Check that supplier_info is fully initialized
-            if let Some(ref s) = item.supplier_info {
-                if s.phones.is_none() || s.name.is_none() || s.inn.is_none() {
+
+        // Check that if mark_code set, quantity should be 1
+        if let Some(ref data) = item.ffd_12_data {
+            if data.mark_code.is_some()
+                && !item.quantity.eq(&Decimal::new(1, 0))
+            {
+                return Err(ItemParseError::WrongQuantityValueError(
+                    item.quantity,
+                ));
+            }
+        }
+        // Check general bounds for quantity
+        if self.quantity.to_string().len() > 8
+            || self.quantity.trunc().to_string().len() > 5
+        {
+            return Err(ItemParseError::BadQuantityValueError(
+                "Is out of range".to_string(),
+            ));
+        }
+        // Check bounds for specific cashbox
+        let (max_scale, cashbox_name) = match self.cashbox_type {
+            CashBoxType::Atol => (3, "Atol"),
+            CashBoxType::CloudPayments => (2, "CloudPayments"),
+        };
+        if self.quantity.scale() > max_scale {
+            return Err(ItemParseError::BadQuantityValueError(format!(
+                "Max scale is {} for {}",
+                max_scale, cashbox_name
+            )));
+        }
+        // Check if both ffd versions are set
+        if item.ffd_105_data.is_some() && item.ffd_12_data.is_some() {
+            return Err(ItemParseError::BothFfdVersionPresentedError);
+        }
+        // Check that supplier_info is fully initialized, if agent_sign is set
+        if let Some(ref data) = item.agent_data {
+            if data.is_agent_sign_set() {
+                if let Some(ref s) = item.supplier_info {
+                    if s.phones.is_none() || s.name.is_none() || s.inn.is_none()
+                    {
+                        return Err(ItemParseError::SupplierInfoError);
+                    }
+                } else {
                     return Err(ItemParseError::SupplierInfoError);
                 }
-            } else {
-                return Err(ItemParseError::SupplierInfoError);
             }
         }
         Ok(item)
@@ -650,3 +852,35 @@ fn check_excise(excise: &Option<Decimal>, _: &()) -> Result<(), garde::Error> {
     }
     Ok(())
 }
+
+// ───── Functions ────────────────────────────────────────────────────────── //
+
+fn serialize_phonenumber_vec<S>(
+    numbers: &Option<Vec<PhoneNumber>>,
+    serializer: S,
+) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    match numbers {
+        Some(numbers) => {
+            let vec: Vec<_> = numbers
+                .iter()
+                .map(|number| {
+                    number.format().mode(phonenumber::Mode::E164).to_string()
+                })
+                .collect();
+            // Now we serialize the collected vector of formatted phone numbers.
+            let mut seq = serializer.serialize_seq(Some(vec.len()))?;
+            for element in vec {
+                seq.serialize_element(&element)?;
+            }
+            seq.end()
+        }
+        None => serializer.serialize_none(),
+    }
+}
+
+// fn validate_quantity(quantity: &Decimal, _: &()) -> Result<(), garde::Error> {
+//     if quantity.scale()
+// }
