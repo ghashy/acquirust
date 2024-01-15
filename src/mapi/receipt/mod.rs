@@ -10,6 +10,7 @@ use crate::domain::Kopeck;
 use crate::error_chain_fmt;
 
 use self::item::Item;
+use self::item::PaymentMethod;
 
 pub mod item;
 
@@ -154,20 +155,71 @@ impl Serialize for EmailOrPhone {
 #[derive(Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Payments {
-    /// Вид оплаты "Наличные". Сумма к оплате в копейках
     #[serde(skip_serializing_if = "Option::is_none")]
     cash: Option<Kopeck>,
-    /// Вид оплаты "Безналичный"
     electronic: Kopeck,
-    /// Вид оплаты "Предварительная оплата (Аванс)"
     #[serde(skip_serializing_if = "Option::is_none")]
     advance_payment: Option<Kopeck>,
-    /// Вид оплаты "Постоплата (Кредит)"
     #[serde(skip_serializing_if = "Option::is_none")]
     credit: Option<Kopeck>,
-    /// Вид оплаты "Иная форма оплаты"
     #[serde(skip_serializing_if = "Option::is_none")]
     provision: Option<Kopeck>,
+}
+
+impl Payments {
+    ///
+    /// # Аргументы
+    ///
+    /// * `electronic`: вид оплаты "Безналичный", (обязательный)
+    pub fn builder(electronic: Kopeck) -> PaymentsBuilder {
+        PaymentsBuilder {
+            electronic,
+            cash: None,
+            advance_payment: None,
+            credit: None,
+            provision: None,
+        }
+    }
+}
+
+pub struct PaymentsBuilder {
+    electronic: Kopeck,
+    cash: Option<Kopeck>,
+    advance_payment: Option<Kopeck>,
+    credit: Option<Kopeck>,
+    provision: Option<Kopeck>,
+}
+
+impl PaymentsBuilder {
+    /// Вид оплаты "Наличные". Сумма к оплате в копейках
+    pub fn with_cash(mut self, amount: Kopeck) -> Self {
+        self.cash = Some(amount);
+        self
+    }
+    /// Вид оплаты "Предварительная оплата (Аванс)"
+    pub fn with_advance_payment(mut self, amount: Kopeck) -> Self {
+        self.cash = Some(amount);
+        self
+    }
+    /// Вид оплаты "Постоплата (Кредит)"
+    pub fn with_credit(mut self, amount: Kopeck) -> Self {
+        self.cash = Some(amount);
+        self
+    }
+    /// Вид оплаты "Иная форма оплаты"
+    pub fn with_provision(mut self, amount: Kopeck) -> Self {
+        self.cash = Some(amount);
+        self
+    }
+    pub fn build(self) -> Payments {
+        Payments {
+            cash: self.cash,
+            electronic: self.electronic,
+            advance_payment: self.advance_payment,
+            credit: self.credit,
+            provision: self.provision,
+        }
+    }
 }
 
 #[derive(thiserror::Error)]
@@ -203,16 +255,8 @@ pub struct Receipt {
     customer: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     customer_inn: Option<String>,
-    // Массив, содержащий в себе информацию о товарах.
     #[garde(dive)]
     items: Vec<Item>,
-    /// Детали платежа. Если объект не передан, будет автоматически
-    /// указана итоговая сумма чека с видом оплаты "Безналичный".
-    /// Если передан объект receipt.Payments, то значение в
-    /// Electronic должно быть равно итоговому значению Amount в методе Init.
-    /// При этом сумма введенных значений по всем видам оплат,
-    /// включая Electronic, должна быть равна сумме (Amount)
-    /// всех товаров, переданных в объекте receipt.Items.
     #[serde(skip_serializing_if = "Option::is_none")]
     payments: Option<Payments>,
 }
@@ -244,19 +288,25 @@ pub struct ReceiptBuilder {
 }
 
 impl ReceiptBuilder {
+    /// Задать версию ФФД.
     pub fn with_ffd_version(mut self, ver: FfdVersion) -> Self {
         self.ffd_version = Some(ver);
         self
     }
+    /// Информация о клиенте. Обязательна для маркированных товаров.
     /// Только для ФФД 1.2.
     pub fn with_client_info(mut self, info: ClientInfo) -> Self {
         self.client_info = Some(info);
         self
     }
+    /// Электронная почта клиента.
+    /// Атрибут должен быть заполнен, если не передано значение в атрибуте “Phone”
     pub fn with_email(mut self, email: Email) -> Self {
         self.email_or_phone = Some(EmailOrPhone::Email(email));
         self
     }
+    /// Телефон клиента в формате +{Ц}
+    /// Атрибут должен быть заполнен, если не передано значение в атрибуте “Email”.
     pub fn with_phone(mut self, phone: PhoneNumber) -> Self {
         self.email_or_phone = Some(EmailOrPhone::Phone(phone));
         self
@@ -271,12 +321,14 @@ impl ReceiptBuilder {
         self.customer_inn = Some(inn);
         self
     }
-    /// Детали платежа. Если объект не передан, будет автоматически
+    /// Детали платежа.
+    ///
+    /// Если объект не передан, будет автоматически
     /// указана итоговая сумма чека с видом оплаты "Безналичный".
-    /// Если передан, то значение в Electronic должно быть равно итоговому значению
-    /// Amount в методе Init. При этом сумма введенных значений по всем видам оплат,
-    /// включая Electronic, должна быть равна сумме (Amount) всех товаров,
-    /// переданных в объекте receipt.Items.
+    /// Если передан, то значение в `Electronic` должно быть равно итоговому значению
+    /// Amount в методе `Init`. При этом сумма введенных значений по всем видам оплат,
+    /// включая `Electronic`, должна быть равна сумме (Amount) всех товаров,
+    /// переданных в объекте `receipt.Items`.
     pub fn with_payments(mut self, payments: Payments) -> Self {
         self.payments = Some(payments);
         self

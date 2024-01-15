@@ -849,10 +849,12 @@ impl ItemBuilder {
         self.supplier_info = Some(info);
         self
     }
+    /// Фискальные данные транзакции согласно стандартам ФФД 1.05.
     pub fn with_ffd_105_data(mut self, data: Ffd105Data) -> Self {
         self.ffd_105_data = Some(data);
         self
     }
+    /// Фискальные данные транзакции согласно стандартам ФФД 1.2.
     pub fn with_ffd_12_data(mut self, data: Ffd12Data) -> Self {
         self.ffd_12_data = Some(data);
         self
