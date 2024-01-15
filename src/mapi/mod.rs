@@ -2,6 +2,7 @@
 
 pub mod payment;
 pub mod payment_data;
+pub mod receipt;
 
 #[derive(Debug, Clone)]
 pub struct MerchantWithPCIDSS;

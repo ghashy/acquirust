@@ -6,12 +6,10 @@ use sha2::{Digest, Sha256};
 use time::OffsetDateTime;
 use url::Url;
 
-use self::receipt::Receipt;
 use super::payment_data::{OperationInitiatorType, PaymentData};
 use crate::domain::Kopeck;
 use crate::error_chain_fmt;
-
-pub mod receipt;
+use crate::mapi::receipt::Receipt;
 
 pub enum OrderId {
     I32(i32),

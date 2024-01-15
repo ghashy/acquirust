@@ -1,10 +1,10 @@
 // test
 
 use kopeck::domain::{Email, Kopeck};
-use kopeck::mapi::payment::receipt::item::{Ffd105Data, Item, SupplierInfo};
-use kopeck::mapi::payment::receipt::{FfdVersion, Receipt};
 use kopeck::mapi::payment::{OrderId, Payment, TerminalType};
 use kopeck::mapi::payment_data::{OperationInitiatorType, PaymentData};
+use kopeck::mapi::receipt::item::{Ffd105Data, Item, SupplierInfo};
+use kopeck::mapi::receipt::{FfdVersion, Receipt};
 use rust_decimal::Decimal;
 
 #[test]
@@ -15,8 +15,8 @@ fn abc() {
         Kopeck::from_rub("12".parse().unwrap()).unwrap(),
         "12".parse().unwrap(),
         Kopeck::from_rub("10".parse().unwrap()).unwrap(),
-        kopeck::mapi::payment::receipt::item::VatType::None,
-        kopeck::mapi::payment::receipt::item::CashBoxType::Atol,
+        kopeck::mapi::receipt::item::VatType::None,
+        kopeck::mapi::receipt::item::CashBoxType::Atol,
     )
     .with_ffd_105_data(Ffd105Data::builder().build().unwrap())
     .with_supplier_info(
@@ -29,14 +29,13 @@ fn abc() {
     )
     .build()
     .unwrap();
-    let receipt = Receipt::builder(
-        kopeck::mapi::payment::receipt::Taxation::UsnIncomeOutcome,
-    )
-    .with_ffd_version(FfdVersion::Ver1_05)
-    .with_phone("+79210127878".parse().unwrap())
-    .add_item(item)
-    .build()
-    .unwrap();
+    let receipt =
+        Receipt::builder(kopeck::mapi::receipt::Taxation::UsnIncomeOutcome)
+            .with_ffd_version(FfdVersion::Ver1_05)
+            .with_phone("+79210127878".parse().unwrap())
+            .add_item(item)
+            .build()
+            .unwrap();
     let payment_data = PaymentData::builder()
         .with_operation_initiator_type(OperationInitiatorType::CIT_CNC)
         .with_phone("+79312211603".parse().unwrap())

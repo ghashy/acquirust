@@ -2,10 +2,10 @@
 
 use criterion::{criterion_group, criterion_main, Criterion};
 use kopeck::domain::{Email, Kopeck};
-use kopeck::mapi::payment::receipt::item::{Ffd105Data, Item, SupplierInfo};
-use kopeck::mapi::payment::receipt::{FfdVersion, Receipt};
 use kopeck::mapi::payment::{OrderId, Payment, TerminalType};
 use kopeck::mapi::payment_data::{OperationInitiatorType, PaymentData};
+use kopeck::mapi::receipt::item::{Ffd105Data, Item, SupplierInfo};
+use kopeck::mapi::receipt::{FfdVersion, Receipt};
 use rust_decimal::Decimal;
 
 fn benchmark_payment_json_creation(c: &mut Criterion) {
@@ -17,8 +17,8 @@ fn benchmark_payment_json_creation(c: &mut Criterion) {
                 Kopeck::from_rub("12".parse().unwrap()).unwrap(),
                 "12".parse().unwrap(),
                 Kopeck::from_rub("10".parse().unwrap()).unwrap(),
-                kopeck::mapi::payment::receipt::item::VatType::None,
-                kopeck::mapi::payment::receipt::item::CashBoxType::Atol,
+                kopeck::mapi::receipt::item::VatType::None,
+                kopeck::mapi::receipt::item::CashBoxType::Atol,
             )
             .with_ffd_105_data(Ffd105Data::builder().build().unwrap())
             .with_supplier_info(
@@ -32,7 +32,7 @@ fn benchmark_payment_json_creation(c: &mut Criterion) {
             .build()
             .unwrap();
             let receipt = Receipt::builder(
-                kopeck::mapi::payment::receipt::Taxation::UsnIncomeOutcome,
+                kopeck::mapi::receipt::Taxation::UsnIncomeOutcome,
             )
             .with_ffd_version(FfdVersion::Ver1_05)
             .with_phone("+79210127878".parse().unwrap())
@@ -57,7 +57,6 @@ fn benchmark_payment_json_creation(c: &mut Criterion) {
             .unwrap();
 
             let _ = serde_json::to_string_pretty(&payment.innertest()).unwrap();
-            // Code that should be benchmarked
         });
     });
 }
