@@ -11,25 +11,46 @@ use crate::error_chain_fmt;
 
 // ───── AgentData ────────────────────────────────────────────────────────── //
 
+/// Represents the details of an agent in the form of various strings and lists of phone numbers.
 pub struct AgentDetails {
-    operation_name: String,
-    operator_name: String,
-    operator_address: String,
-    operator_inn: String,
-    phones: Vec<PhoneNumber>,
-    transfer_phones: Vec<PhoneNumber>,
+    /// The operation name
+    /// Maximum length: 64 characters.
+    pub operation_name: String,
+    /// The name of the operator for fund transfers
+    /// Maximum length: 64 characters.
+    pub operator_name: String,
+    /// The address of the operator for fund transfers
+    /// Maximum length: 243 characters.
+    pub operator_address: String,
+    /// The tax identification number (INN) of the operator;
+    /// Maximum length: 12 characters.
+    pub operator_inn: String,
+    /// The phone numbers of the payment agent; in `+{digit}` format.
+    /// Each item must be 1 to 19 characters long.
+    pub phones: Vec<PhoneNumber>,
+    /// The phone numbers for transfers; in `+{digit}` format.
+    /// Each item must be 1 to 19 characters long.
+    pub transfer_phones: Vec<PhoneNumber>,
 }
 
-/// Признак агента
+/// Agent sign params for initializing AgentData type.
 pub enum AgentSignParams {
     BankPayingAgent(AgentDetails),
     BankPayingSubagent(AgentDetails),
     PayingAgent {
+        /// The phone numbers of the payment agent; in `+{digit}` format.
+        /// Each item must be 1 to 19 characters long.
         phones: Vec<PhoneNumber>,
+        /// The phone numbers of the payment agent; in `+{digit}` format.
+        /// Each item must be 1 to 19 characters long.
         receiver_phones: Vec<PhoneNumber>,
     },
     PayingSubagent {
+        /// The phone numbers of the payment agent; in `+{digit}` format.
+        /// Each item must be 1 to 19 characters long.
         phones: Vec<PhoneNumber>,
+        /// The phone numbers of the payment agent; in `+{digit}` format.
+        /// Each item must be 1 to 19 characters long.
         receiver_phones: Vec<PhoneNumber>,
     },
     Attorney,
@@ -52,9 +73,8 @@ impl std::fmt::Display for AgentSignParams {
     }
 }
 
-// TODO: check that phonenumber has correct form here
-// Телефоны в формате `+{Ц}`
-/// Данные агента.
+/// Contains optional parameters for an agent's data.
+/// To be used when an agent scheme is applied.
 #[derive(Serialize, Validate, Default)]
 #[serde(rename_all = "PascalCase")]
 #[garde(allow_unvalidated)]
@@ -75,9 +95,15 @@ pub struct AgentData {
     operator_inn: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     phones: Option<Vec<PhoneNumber>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::serialize_phonenumber_vec"
+    )]
     receiver_phones: Option<Vec<PhoneNumber>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "crate::serialize_phonenumber_vec"
+    )]
     transfer_phones: Option<Vec<PhoneNumber>>,
 }
 
@@ -134,30 +160,70 @@ pub struct AgentDataBuilder {
 }
 
 impl AgentDataBuilder {
+    /// Sets the operation name for the `AgentData`.
+    ///
+    /// This attribute is mandatory if `AgentSign` is one of the following:
+    /// - bank_paying_agent
+    /// - bank_paying_subagent
+    ///
+    /// The operation name should contain a maximum of 64 characters.
     pub fn with_operation_name(mut self, name: String) -> Self {
         self.operation_name = Some(name);
         self
     }
+    /// Sets the operator name for the `AgentData`.
+    ///
+    /// This attribute is mandatory if `AgentSign` is one of the following:
+    /// - bank_paying_agent
+    /// - bank_paying_subagent
+    ///
+    /// The operator name should contain a maximum of 64 characters.
     pub fn with_operator_name(mut self, name: String) -> Self {
         self.operator_name = Some(name);
         self
     }
+    /// Sets the operator address for the `AgentData`.
+    ///
+    /// This attribute is mandatory if `AgentSign` is one of the following:
+    /// - bank_paying_agent
+    /// - bank_paying_subagent
+    ///
+    /// The operator address should contain a maximum of 243 characters.
     pub fn with_operator_address(mut self, address: String) -> Self {
         self.operator_address = Some(address);
         self
     }
+    /// Sets the tax identification number (INN) of the operator for the `AgentData`.
+    ///
+    /// This attribute is mandatory if `AgentSign` is one of the following:
+    /// - bank_paying_agent
+    /// - bank_paying_subagent
+    ///
+    /// The operator INN should contain a maximum of 12 characters.
     pub fn with_operator_inn(mut self, inn: String) -> Self {
         self.operator_inn = Some(inn);
         self
     }
+    /// Adds a list of phone numbers associated with the agent.
+    ///
+    /// This function sets the phone numbers for the `AgentData` being built.
+    /// The phone numbers must be in the format +{N}.
     pub fn with_phones(mut self, phones: Vec<PhoneNumber>) -> Self {
         self.phones = Some(phones);
         self
     }
+    /// Assigns the phone numbers of the receiver operator.
+    ///
+    /// Use this method to set the receiver phones for the `AgentData`.
+    /// The format expected is the international format beginning with a plus sign: +{N}.
     pub fn with_receiver_phones(mut self, phones: Vec<PhoneNumber>) -> Self {
         self.receiver_phones = Some(phones);
         self
     }
+    /// Defines the transfer phones of the transfer operator.
+    ///
+    /// This method is utilized to specify the transfer phone numbers within the `AgentData`.
+    /// Such numbers are to be formatted with a leading plus symbol followed by digits: +{N}.
     pub fn with_transfer_phones(mut self, phones: Vec<PhoneNumber>) -> Self {
         self.transfer_phones = Some(phones);
         self
@@ -180,32 +246,46 @@ impl AgentDataBuilder {
 
 // ───── SupplierInfo ─────────────────────────────────────────────────────── //
 
+/// The `SupplierInfo` type stores detailed information about a supplier.
+///
+/// It includes the supplier's name, identifier, contact details, and status.
+/// This type is typically used in supply chain management systems to
+/// access supplier-related data operations.
 #[derive(Serialize, Validate)]
 #[serde(rename_all = "PascalCase")]
 #[garde(allow_unvalidated)]
 pub struct SupplierInfo {
     #[serde(
         skip_serializing_if = "Option::is_none",
-        serialize_with = "serialize_phonenumber_vec"
+        serialize_with = "crate::serialize_phonenumber_vec"
     )]
     phones: Option<Vec<PhoneNumber>>,
-    /// Наименование поставщика.
-    /// Внимание: в данные 239 символов включаются телефоны поставщика:
-    /// 4 символа на каждый телефон.
-    /// Например, если передано два телефона поставщика длиной 12 и 14 символов,
-    /// то максимальная длина наименования поставщика будет
-    /// 239 – (12 + 4) – (14 + 4) = 205 символов
     #[serde(skip_serializing_if = "Option::is_none")]
     #[garde(length(max = 239))]
     name: Option<String>,
-    /// ИНН поставщика.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[garde(length(min = 10, max = 12))]
     inn: Option<String>,
 }
 
 impl SupplierInfo {
-    /// Все атрибуты ОБЯЗАТЕЛЕНЫ, если передается значение AgentSign в объекте AgentData
+    /// Creates a new `SupplierInfo` object.
+    ///
+    /// All attributes are MANDATORY if the `AgentSign` value is passed in the `AgentData` object.
+    ///
+    /// - `phones`: An array of supplier phone numbers in the format +{CountryCode}{Number}.
+    ///   Each phone number must be between 1 to 19 characters in length.
+    ///   This attribute is required if the `AgentSign` value is passed in the `AgentData` object.
+    ///
+    /// - `name`: The name of the supplier.
+    ///   This attribute is required if the `AgentSign` value is passed in the `AgentData` object.
+    ///   The maximum length of the supplier name is 239 characters, which includes 4 characters for each phone number.
+    ///   For example, if two supplier phone numbers are provided with lengths of 12 and 14 characters,
+    ///   then the maximum length of the supplier name will be 239 - (12 + 4) - (14 + 4) = 205 characters.
+    ///
+    /// - `inn`: The Taxpayer Identification Number (INN) of the supplier.
+    ///   This must be in the format of ten to twelve digits.
+    ///   This attribute is required if the `AgentSign` value is passed in the `AgentData` object.
     pub fn new(
         phones: Option<Vec<PhoneNumber>>,
         name: Option<String>,
@@ -231,6 +311,8 @@ pub enum ItemParseError {
     WrongQuantityValueError(Decimal),
     #[error("Bad quantity value: {0}")]
     BadQuantityValueError(String),
+    #[error("No cashbox type set, and MarkCode is not set")]
+    NoCashBoxSet,
 }
 
 impl std::fmt::Debug for ItemParseError {
@@ -239,29 +321,53 @@ impl std::fmt::Debug for ItemParseError {
     }
 }
 
+/// Represents the type of VAT (Value Added Tax) applicable.
+///
+/// # Variants
+///
+/// * `None` - No VAT.
+/// * `Vat0` - VAT at the rate of 0%.
+/// * `Vat10` - VAT at the rate of 10%.
+/// * `Vat20` - VAT at the rate of 20%.
+/// * `Vat110` - VAT at the fraction rate of 10/110, usually used for calculating VAT for a receipt.
+/// * `Vat120` - VAT at the fraction rate of 20/120, usually used for calculating VAT for a receipt.
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum VatType {
-    None,   // без НДС
-    Vat0,   // НДС по ставке 0%
-    Vat10,  // НДС по ставке 10%
-    Vat20,  // НДС по ставке 20%
-    Vat110, // НДС чека по расчетной ставке 10/110
-    Vat120, // НДС чека по расчетной ставке 20/120
+    None,
+    Vat0,
+    Vat10,
+    Vat20,
+    Vat110,
+    Vat120,
 }
 
+/// Describes the method of payment used in a transaction.
+///
+/// # Variants
+///
+/// * `FullPrepayment` - Full prepayment, 100% paid in advance.
+/// * `Prepayment` - Partial prepayment paid in advance.
+/// * `Advance` - Advance payment, typically paid before receiving goods or services.
+/// * `FullPayment` - Complete payment made at the time of purchase.
+/// * `PartialPayment` - Partial payment made with the understanding that the
+/// remaining amount will be paid later, possibly financed through credit.
+/// * `Credit` - Transfer of goods or services where payment is due at a later time.
+/// * `CreditPayment` - A payment that is made towards clearing owed credit.
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PaymentMethod {
-    FullPrepayment, // предоплата 100%
-    Prepayment,     // предоплата
-    Advance,        // аванс
-    FullPayment,    // полный расчет
-    PartialPayment, // частичный расчет и кредит
-    Credit,         // передача в кредит
-    CreditPayment,  // оплата кредита
+    FullPrepayment,
+    Prepayment,
+    Advance,
+    FullPayment,
+    PartialPayment,
+    Credit,
+    CreditPayment,
 }
 
+/// Represents the types of payment objects defined by the
+/// Fiscal Feature Descriptor (FFD) version 1.2.
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PaymentObjectFFD_12 {
@@ -298,6 +404,11 @@ pub enum PaymentObjectFFD_12 {
     Another,              // иной предмет расчета
 }
 
+/// Represents the types of payment objects as per
+/// Fiscal Feature Descriptor (FFD) version 1.05.
+/// Similar to FFD 1.2 but tailored for a specific set of fiscal operations,
+/// it covers a subset of transaction types necessary for
+/// simplified fiscal reporting.
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PaymentObjectFFD_105 {
@@ -316,6 +427,13 @@ pub enum PaymentObjectFFD_105 {
     Another,
 }
 
+/// Describes various measurement units that can be used for item quantities in financial documents.
+/// Each unit variant includes a serialization rename attribute for compatibility with external
+/// systems that require specific formats, such as fiscal data operators.
+///
+/// This enumeration covers a comprehensive range of commonly used measurement units in commerce,
+/// from simple countable units to volumetric and electronic data measurements, providing flexibility
+/// in specifying the nature of the items being transacted.
 #[derive(Serialize)]
 pub enum MeasurementUnit {
     #[serde(rename = "шт")]
@@ -370,113 +488,133 @@ pub enum MeasurementUnit {
 #[derive(Serialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum MarkCodeType {
-    /// Код товара, формат которого не идентифицирован,
-    /// как один из реквизитов
+    /// Product code with an unidentified format among the requisites.
     Unknown,
-    /// Код товара в формате EAN-8
+    /// Product code in EAN-8 format.
     Ean8,
-    /// Код товара в формате EAN-13
+    /// Product code in EAN-13 format.
     Ean13,
-    /// Код товара в формате ITF-14
+    /// Product code in ITF-14 format.
     Itf14,
-    /// Код товара в формате GS1, нанесенный на товар,
-    /// не подлежащий маркировке
+    /// GS1 product code applied on an unmarked product.
     Gs10,
-    /// Код товара в формате GS1, нанесенный на товар,
-    /// подлежащий маркировке
+    /// GS1 product code applied on a marked product.
     Gs1m,
-    /// Код товара в формате короткого кода маркировки,
-    /// нанесенный на товар
+    /// Short marking code applied on a product.
     Short,
-    /// Контрольно-идентификационный знак мехового изделия
+    /// Control identification mark for fur products.
     Fur,
-    /// Код товара в формате ЕГАИС-2.0
+    /// Product code in EGAISt-2.0 format.
     Egais20,
-    /// Код товара в формате ЕГАИС-3.0
+    /// Product code in EGAISt-3.0 format.
     Egais30,
-    /// Код маркировки, как он был прочитан сканером
+    /// Marking code as read by a scanner.
     Rawcode,
 }
 
-/// Код маркировки в машиночитаемой форме, представленный в виде
-/// одного из видов кодов, формируемых в соответствии с требованиями,
-/// предусмотренными правилами, для нанесения на потребительскую упаковку,
-/// или на товары, или на товарный ярлык
+/// Machine-readable mark code in the form of
+/// one of the types of codes generated according to the requirements
+/// provided by the rules for printing on consumer packaging,
+/// or on goods, or on a product label.
 #[derive(Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct MarkCode {
-    /// Тип штрих кода
+    /// Barcode type
     pub mark_code_type: MarkCodeType,
-    /// Код маркировки
+    /// Mark code
     pub value: String,
 }
 
-/// Отраслевой реквизит предмета расчета.
+/// Sectoral attribute of the calculation subject.
 ///
-/// Необходимо указывать только для товаров подлежащих обязательной
-/// маркировке средством идентификации и включение данного реквизита
-/// предусмотрено НПА отраслевого регулирования для соответствующей
-/// товарной группы.
+/// It is necessary to specify only for goods subject to mandatory
+/// marking with an identification tool, and the inclusion of this attribute
+/// is provided for by industry-specific regulatory acts for the corresponding
+/// product group.
 #[derive(Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct SectoralItemProps {
-    /// Идентификатор ФОИВ (федеральный орган исполнительной власти)
+    /// Identifier of the Federal Executive Authority
     pub federal_id: String,
-    /// Дата нормативного акта ФОИВ
+    /// Date of the normative act of the Federal Executive Authority
     #[serde(serialize_with = "serialize_date_rfc3339")]
     pub date: PrimitiveDateTime,
-    /// Номер нормативного акта ФОИВ
+    /// Number of the normative act of the Federal Executive Authority
     pub number: String,
-    /// Состав значений, определенных нормативным актом ФОИВ
+    /// Composition of values​defined by the normative act of the
+    /// Federal Executive Authority
     pub value: String,
 }
 
+/// Represents the detailed fiscal data for a transaction according to FFD 1.2 standards.
+/// This structure is designed to integrate with fiscal data operators and is primarily
+/// used for serialized data exchange between software systems and fiscal data recorders.
+///
+/// The `Ffd12Data` includes key fiscal attributes such as payment objects and methods,
+/// important for correct fiscal reporting. Additionally, it holds optional fields
+/// capturing detailed information like user data, excise amounts, country codes of origin for goods,
+/// customs declaration numbers, and specific marking codes for tracked goods.
+///
+/// The structure enforces strict data formats and validation through its serialization
+/// representation, ensuring compliance with fiscal regulations. It aligns with the required
+/// formats for excise amounts, country codes, and custom declaration numbers, also handling
+/// the inclusion of marked goods in the fiscal documents.
+///
+/// This is employed during the creation of fiscal documents where mandatory and regulated
+/// data is necessary for proper transaction processing and reporting to fiscal authorities.
 #[derive(Serialize, Validate)]
 #[garde(allow_unvalidated)]
 pub struct Ffd12Data {
     payment_object: PaymentObjectFFD_12,
     payment_method: PaymentMethod,
-    /// Дополнительный реквизит предмета расчета.
     #[serde(skip_serializing_if = "Option::is_none")]
     user_data: Option<String>,
-    /// Сумма акциза в рублях с учетом копеек, включенная в стоимость предмета расчета.
-    /// Целая часть не более 8 знаков;
-    /// дробная часть не более 2 знаков;
-    /// значение не может быть отрицательным.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[garde(custom(check_excise))]
     excise: Option<Decimal>,
-    /// Цифровой код страны происхождения товара в соответствии с
-    /// Общероссийским классификатором стран мира (3 цифры)
     #[serde(skip_serializing_if = "Option::is_none")]
     country_code: Option<CountryCode>,
-    /// Номер таможенной декларации
     #[serde(skip_serializing_if = "Option::is_none")]
     #[garde(length(max = 32))]
     declaration_number: Option<String>,
     measurement_unit: MeasurementUnit,
-    /// Режим обработки кода маркировки. Должен принимать значение равное «0».
-    /// Включается в чек в случае, если предметом расчета является товар,
-    /// подлежащий обязательной маркировке средством идентификации
-    /// (соответствующий код в поле paymentObject)
     #[serde(skip_serializing_if = "Option::is_none")]
     mark_processing_mode: Option<char>,
-    /// Включается в чек в случае, если предметом расчета является товар,
-    /// подлежащий обязательной маркировке средством идентификации
-    /// (соответствующий код в поле paymentObject)
     #[serde(skip_serializing_if = "Option::is_none")]
     mark_code: Option<MarkCode>,
 
-    // TODO: Не является обязательным объектом, implement later.
+    // TODO: not mandatory, implement later.
     #[serde(skip_serializing_if = "Option::is_none")]
     mark_quantity: Option<()>,
 
-    /// Отраслевой реквизит предмета расчета
     #[serde(skip_serializing_if = "Option::is_none")]
     sectoral_item_props: Option<SectoralItemProps>,
 }
 
 impl Ffd12Data {
+    /// Creates a builder for constructing an instance of `Ffd12Data`.
+    /// This function initializes the `Ffd12DataBuilder` with the mandatory fields which are necessary
+    /// for any fiscal document according to FFD 1.2 standards.
+    ///
+    /// It requires the essential components of a fiscal operation which include the type of payment object,
+    /// the method of payment, and the unit of measurement for the items involved. These core attributes
+    /// define the basic structure of a fiscal transaction and are thus necessary parameters to initiate
+    /// the builder pattern.
+    ///
+    /// The builder returned will have all optional fields uninitialized (set to `None`), allowing for
+    /// optional attributes to be chained and set through the builder's setter methods, enabling
+    /// a flexible and controlled construction of the `Ffd12Data` struct.
+    ///
+    /// Arguments:
+    /// * `payment_object` - A `PaymentObjectFFD_12` which categorizes the transaction type.
+    /// * `payment_method` - A `PaymentMethod` which indicates the method through which the
+    /// payment is made.
+    /// * `measurement_unit` - A `MeasurementUnit` which specifies the unit of measure of the items
+    /// in the transaction.
+    ///
+    /// Returns:
+    /// A `Ffd12DataBuilder` instance with the provided mandatory fields set and the optional fields
+    /// unset, ready for further construction.
     pub fn builder(
         payment_object: PaymentObjectFFD_12,
         payment_method: PaymentMethod,
@@ -511,43 +649,42 @@ pub struct Ffd12DataBuilder {
 }
 
 impl Ffd12DataBuilder {
-    /// Дополнительный реквизит предмета расчета.
+    /// Additional user data field for the payment item.
     pub fn with_user_data(mut self, data: String) -> Self {
         self.user_data = Some(data);
         self
     }
-    /// Сумма акциза в рублях с учетом копеек, включенная в стоимость предмета расчета.
-    /// Целая часть не более 8 знаков;
-    /// дробная часть не более 2 знаков;
-    /// значение не может быть отрицательным.
+    /// Excise amount in rubles, including cents, included in the cost of the payment item.
+    /// Integer part not exceeding 8 digits;
+    /// Fractional part not exceeding 2 digits;
+    /// Value cannot be negative.
     pub fn with_excise(mut self, excise: Decimal) -> Self {
         self.excise = Some(excise);
         self
     }
-    /// Цифровой код страны происхождения товара в соответствии с
-    /// Общероссийским классификатором стран мира.
+    /// The digital country code of origin of goods in accordance with
+    /// the All-Russian Classifier of World Countries.
     pub fn with_country_code(mut self, code: CountryCode) -> Self {
         self.country_code = Some(code);
         self
     }
-    /// Номер таможенной декларации
+    /// Customs declaration number
     /// Max length is 32.
     pub fn with_declaration_number(mut self, code: String) -> Self {
         self.declaration_number = Some(code);
         self
     }
-    /// Режим обработки кода маркировки.
+    /// Marking code processing mode.
     pub fn mark_processing_mode(mut self) -> Self {
         self.mark_processing_mode = Some('0');
         self
     }
-    /// Включается в чек в случае, если предметом расчета является товар,
-    /// подлежащий обязательной маркировке средством идентификации.
+    /// Included in the receipt if the payment item is a product subject to mandatory marking with identification means.
     pub fn with_mark_code(mut self, code: MarkCode) -> Self {
         self.mark_code = Some(code);
         self
     }
-    /// Отраслевой реквизит предмета расчета
+    /// Industry-specific requirement of the payment item
     pub fn with_sectoral_item_props(
         mut self,
         props: SectoralItemProps,
@@ -555,6 +692,8 @@ impl Ffd12DataBuilder {
         self.sectoral_item_props = Some(props);
         self
     }
+    /// Builds the Ffd12Data object.
+    /// Returns a result of Ffd12Data or an error from the garde::Report.
     pub fn build(self) -> Result<Ffd12Data, garde::Report> {
         let data = Ffd12Data {
             payment_object: self.payment_object,
@@ -574,6 +713,31 @@ impl Ffd12DataBuilder {
     }
 }
 
+/// `Ffd105Data` is a data structure that represents the fiscal information required
+/// for reporting payment transactions to fiscal data operators like online cash registers.
+///
+/// Fields within this structure correspond to fiscal data standards, and they are
+/// all optional to provide flexibility for data inclusion.
+///
+/// Fiscal data operators may include ATOL Online, CloudKassir, OrangeData, etc.,
+/// and this structure ensures that the data conforms to the varied formats and
+/// specifications required by these systems.
+///
+/// The structure uses Rust's serialization framework to enforce specific data
+/// constraints, such as the maximum length of strings for EAN-13 barcodes, as well as
+/// adapting field naming patterns to fit the desired serialization style (i.e., PascalCase).
+///
+/// For example:
+///
+/// - EAN-13 barcode validation accommodates different formatting requirements, like
+///   hexadecimal representation with spaces for ATOL Online, even-length strings for
+///   CloudKassir, and base64 encoded strings for OrangeData.
+/// - Payment methods and objects are represented as enums with specific allowed values,
+///   defaulting to "full_payment" and "commodity" respectively if not provided.
+/// - Shop codes are used in scenarios that utilize submerchants registered through XML.
+///
+/// The structure is primarily used for serialization and validation when interfacing
+/// with fiscal data systems and ensures compliance with fiscal regulations.
 #[derive(Serialize, Validate)]
 #[serde(rename_all = "PascalCase")]
 #[garde(allow_unvalidated)]
@@ -604,41 +768,40 @@ pub struct Ffd105DataBuilder {
 }
 
 impl Ffd105DataBuilder {
-    /// Признак способа расчёта.
+    /// Indication of payment method.
     pub fn with_payment_method(mut self, method: PaymentMethod) -> Self {
         self.payment_method = Some(method);
         self
     }
-    /// Штрих-код в требуемом формате. В зависимости от типа кассы
-    /// требования могут отличаться:
+    /// Barcode in the required format. Requirements may vary depending on the type of cash register:
     ///
-    /// АТОЛ Онлайн - шестнадцатеричное представление с пробелами.
-    /// Максимальная длина – 32 байта
-    /// (^[a-fA-F0-9]{2}$)|(^([afA-F0-9]{2}\s){1,31}[a-fA-F0-9]{2}$)
-    /// Пример:
+    /// ATOL Online - hexadecimal representation with spaces.
+    /// Maximum length – 32 bytes
+    /// (^[a-fA-F0-9]{2}$)|(^([a-fA-F0-9]{2}\s){1,31}[a-fA-F0-9]{2}$)
+    /// Example:
     /// 00 00 00 01 00 21 FA 41 00 23 05 41 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 12 00 AB 00
-    /// CloudKassir - длина строки: четная, от 8 до 150 байт, т.е.
-    /// от 16 до 300 ASCII символов ['0' - '9' , 'A' - 'F' ]
-    /// шестнадцатеричного представления кода маркировки товара.
-    /// Пример: 303130323930303030630333435
-    /// OrangeData - строка, содержащая base64 кодированный массив
-    /// от 8 до 32 байт Пример: igQVAAADMTIzNDU2Nzg5MDEyMwAAAAAAAQ==
-    /// В случае передачи в запросе параметра Ean13 не прошедшего валидацию,
-    /// возвращается неуспешный ответ с текстом ошибки в параметре
-    /// message = "Неверный параметр Ean13".
+    /// CloudKassir - string length: even, from 8 to 150 bytes, i.e.
+    /// from 16 to 300 ASCII characters ['0' - '9', 'A' - 'F']
+    /// hexadecimal representation of the product marking code.
+    /// Example: 303130323930303030630333435
+    /// OrangeData - a string containing a base64 encoded array
+    /// from 8 to 32 bytes Example: igQVAAADMTIzNDU2Nzg5MDEyMwAAAAAAAQ==
+    /// In case the Ean13 parameter transmitted in the request failed validation,
+    /// an unsuccessful response is returned with the error message in the parameter
+    /// message = "Invalid Ean13 parameter".
     pub fn with_ean_13(mut self, ean: &str) -> Self {
         self.ean_13 = Some(ean.to_string());
         self
     }
-    /// Код магазина. Для параметра ShopСode необходимо использовать
-    /// значение параметра `Submerchant_ID`, полученного в ответ при
-    /// регистрации магазинов через xml.
-    /// Если xml не используется, передавать поле не нужно
+    /// Shop code. For the ShopСode parameter, you need to use
+    /// the `Submerchant_ID` parameter value, received in response to
+    /// registering shops through xml.
+    /// If xml is not used, the field does not need to be transmitted.
     pub fn with_shop_code(mut self, code: &str) -> Self {
         self.shop_code = Some(code.to_string());
         self
     }
-    /// Признак предмета расчёта.
+    /// Indication of a payment object.
     pub fn with_payment_object(mut self, obj: PaymentObjectFFD_105) -> Self {
         self.payment_object = Some(obj);
         self
@@ -660,53 +823,73 @@ pub enum CashBoxType {
     CloudPayments,
 }
 
-// Атрибуты, предусмотренные в протоколе для отправки чеков
-// по маркируемым товарам, не являются обязательными для товаров
-// без маркировки. Если используется ФФД 1.2, но реализуемый товар -
-// не подлежит маркировке, то поля можно не отправлять или отправить со значением null.
+/// Receipt position with information about goods
+///
+/// Attributes specified in the protocol for sending receipts
+/// for labeled goods are not mandatory for goods
+/// without labeling. If FFD 1.2 is used, but the item being sold
+/// is not subject to marking, then the fields can either not be sent or sent with a null value.
 #[derive(Serialize, Validate)]
 #[serde(rename_all = "PascalCase")]
 #[garde(allow_unvalidated)]
 pub struct Item {
-    // We don't validate it, because it validated on build
-    /// Данные агента. Обязателен, если используется агентская схема.
     #[serde(skip_serializing_if = "Option::is_none")]
     agent_data: Option<AgentData>,
-    /// Данные поставщика платежного агента.
-    // Обязателен, если передается значение AgentSign в объекте AgentData.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[garde(dive)]
     supplier_info: Option<SupplierInfo>,
     #[garde(length(max = 128))]
     name: String,
-    /// Цена в копейках
     price: Kopeck,
-    /// Максимальное количество символов - 8, где целая часть не более 5 знаков,
-    /// а дробная часть не более 3 знаков для `Атол`,
-    /// не более 2 знаков для `CloudPayments`
-    /// Значение «1», если передан объект `MarkCode`
-    // #[garde(custom(validate_quantity))]
     quantity: Decimal,
-    /// Стоимость товара в копейках. Произведение Quantity и Price
     amount: Kopeck,
     tax: VatType,
 
-    // We don't validate it, because it validated on build
     #[serde(flatten)]
     pub(super) ffd_105_data: Option<Ffd105Data>,
-    // We don't validate it, because it validated on build
     #[serde(flatten)]
     pub(super) ffd_12_data: Option<Ffd12Data>,
 }
 
 impl Item {
+    /// Constructs a new `ItemBuilder` with the specified properties.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - The name of the item.
+    /// * `price` - The price of the item in Kopecks, using the `Kopeck` type.
+    /// * `quantity` - The quantity or weight of the item, represented as a `Decimal`. This value
+    ///   must be formatted with a maximum of 8 characters, comprising up to 5 digits for the
+    ///   integer part and up to 3 decimal places for Atol systems or 2 for CloudPayments systems.
+    ///   Set the value to '1' if a MarkCode object is being passed.
+    /// * `amount` - The total amount of the item in Kopecks, using the `Kopeck` type.
+    /// * `tax` - The type of VAT to be applied to the item, using the `VatType` enum.
+    /// * `cashbox_type` - The type of cashbox that will be used, `Atol` or `CloudPayments`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let item_builder = ItemBuilder::builder(
+    ///     "Chocolate Bar",
+    ///     Kopeck::new(4999),
+    ///     Decimal::new(1, 0),
+    ///     Kopeck::new(4999),
+    ///     VatType::Vat20,
+    ///     CashBoxType::Automated,
+    /// );
+    /// ```
+    ///
+    /// # Returns
+    ///
+    /// Returns an `ItemBuilder` instance, which can be used to build an item with additional
+    /// optional properties.
     pub fn builder(
         name: &str,
         price: Kopeck,
         quantity: Decimal,
         amount: Kopeck,
         tax: VatType,
-        cashbox_type: CashBoxType,
+        cashbox_type: Option<CashBoxType>,
     ) -> ItemBuilder {
         ItemBuilder {
             agent_data: None,
@@ -724,7 +907,7 @@ impl Item {
 }
 
 pub struct ItemBuilder {
-    cashbox_type: CashBoxType,
+    cashbox_type: Option<CashBoxType>,
     agent_data: Option<AgentData>,
     supplier_info: Option<SupplierInfo>,
     name: String,
@@ -737,16 +920,17 @@ pub struct ItemBuilder {
 }
 
 impl ItemBuilder {
-    /// Данные агента.
+    /// Agent data.
     ///
-    /// Если передается значение AgentSign в объекте AgentData,
-    /// SupplierInfo должен быть полностью инициализирован,
-    /// иначе `build` вернет ошибку.
+    /// If the AgentSign value is passed in the AgentData object,
+    /// SupplierInfo must be fully initialized,
+    /// otherwise `build` will return an error.
     pub fn with_agent_data(mut self, agent_data: AgentData) -> Self {
         self.agent_data = Some(agent_data);
         self
     }
-    /// Данные поставщика платежного агента.
+    /// Payment agent supplier data.
+    /// Mandatory if an AgentSign value is passed in the AgentData object.
     pub fn with_supplier_info(mut self, info: SupplierInfo) -> Self {
         self.supplier_info = Some(info);
         self
@@ -782,25 +966,27 @@ impl ItemBuilder {
                     item.quantity,
                 ));
             }
-        }
-        // Check general bounds for quantity
-        if self.quantity.to_string().len() > 8
-            || self.quantity.trunc().to_string().len() > 5
-        {
-            return Err(ItemParseError::BadQuantityValueError(
-                "Is out of range".to_string(),
-            ));
-        }
-        // Check bounds for specific cashbox
-        let (max_scale, cashbox_name) = match self.cashbox_type {
-            CashBoxType::Atol => (3, "Atol"),
-            CashBoxType::CloudPayments => (2, "CloudPayments"),
-        };
-        if self.quantity.scale() > max_scale {
-            return Err(ItemParseError::BadQuantityValueError(format!(
-                "Max scale is {} for {}",
-                max_scale, cashbox_name
-            )));
+        } else {
+            // Check general bounds for quantity
+            if self.quantity.to_string().len() > 8
+                || self.quantity.trunc().to_string().len() > 5
+            {
+                return Err(ItemParseError::BadQuantityValueError(
+                    "Is out of range".to_string(),
+                ));
+            }
+            // Check bounds for specific cashbox
+            let (max_scale, cashbox_name) = match self.cashbox_type {
+                Some(CashBoxType::Atol) => (3, "Atol"),
+                Some(CashBoxType::CloudPayments) => (2, "CloudPayments"),
+                None => return Err(ItemParseError::NoCashBoxSet),
+            };
+            if self.quantity.scale() > max_scale {
+                return Err(ItemParseError::BadQuantityValueError(format!(
+                    "Max scale is {} for {}",
+                    max_scale, cashbox_name
+                )));
+            }
         }
         // Check if both ffd versions are set
         if item.ffd_105_data.is_some() && item.ffd_12_data.is_some() {
@@ -852,35 +1038,3 @@ fn check_excise(excise: &Option<Decimal>, _: &()) -> Result<(), garde::Error> {
     }
     Ok(())
 }
-
-// ───── Functions ────────────────────────────────────────────────────────── //
-
-fn serialize_phonenumber_vec<S>(
-    numbers: &Option<Vec<PhoneNumber>>,
-    serializer: S,
-) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    match numbers {
-        Some(numbers) => {
-            let vec: Vec<_> = numbers
-                .iter()
-                .map(|number| {
-                    number.format().mode(phonenumber::Mode::E164).to_string()
-                })
-                .collect();
-            // Now we serialize the collected vector of formatted phone numbers.
-            let mut seq = serializer.serialize_seq(Some(vec.len()))?;
-            for element in vec {
-                seq.serialize_element(&element)?;
-            }
-            seq.end()
-        }
-        None => serializer.serialize_none(),
-    }
-}
-
-// fn validate_quantity(quantity: &Decimal, _: &()) -> Result<(), garde::Error> {
-//     if quantity.scale()
-// }
