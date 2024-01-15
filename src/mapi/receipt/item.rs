@@ -1,7 +1,6 @@
 use garde::Validate;
 use phonenumber::PhoneNumber;
 use rust_decimal::Decimal;
-use serde::ser::SerializeSeq;
 use serde::{ser::Error, Serialize, Serializer};
 use time::PrimitiveDateTime;
 
@@ -370,7 +369,7 @@ pub enum PaymentMethod {
 /// Fiscal Feature Descriptor (FFD) version 1.2.
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
-pub enum PaymentObjectFFD_12 {
+pub enum PaymentObjectFfd12 {
     Commodity,                         // товар
     Excise,                            // подакцизный товар
     Job,                               // работа
@@ -411,7 +410,7 @@ pub enum PaymentObjectFFD_12 {
 /// simplified fiscal reporting.
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
-pub enum PaymentObjectFFD_105 {
+pub enum PaymentObjectFfd105 {
     Commodity,
     Excise,
     Job,
@@ -565,7 +564,7 @@ pub struct SectoralItemProps {
 #[derive(Serialize, Validate)]
 #[garde(allow_unvalidated)]
 pub struct Ffd12Data {
-    payment_object: PaymentObjectFFD_12,
+    payment_object: PaymentObjectFfd12,
     payment_method: PaymentMethod,
     #[serde(skip_serializing_if = "Option::is_none")]
     user_data: Option<String>,
@@ -616,7 +615,7 @@ impl Ffd12Data {
     /// A `Ffd12DataBuilder` instance with the provided mandatory fields set and the optional fields
     /// unset, ready for further construction.
     pub fn builder(
-        payment_object: PaymentObjectFFD_12,
+        payment_object: PaymentObjectFfd12,
         payment_method: PaymentMethod,
         measurement_unit: MeasurementUnit,
     ) -> Ffd12DataBuilder {
@@ -636,7 +635,7 @@ impl Ffd12Data {
 }
 
 pub struct Ffd12DataBuilder {
-    payment_object: PaymentObjectFFD_12,
+    payment_object: PaymentObjectFfd12,
     payment_method: PaymentMethod,
     measurement_unit: MeasurementUnit,
     user_data: Option<String>,
@@ -748,7 +747,7 @@ pub struct Ffd105Data {
     #[serde(skip_serializing_if = "Option::is_none")]
     shop_code: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    payment_object: Option<PaymentObjectFFD_105>,
+    payment_object: Option<PaymentObjectFfd105>,
     #[serde(skip_serializing_if = "Option::is_none")]
     payment_method: Option<PaymentMethod>,
 }
@@ -763,7 +762,7 @@ impl Ffd105Data {
 pub struct Ffd105DataBuilder {
     ean_13: Option<String>,
     shop_code: Option<String>,
-    payment_object: Option<PaymentObjectFFD_105>,
+    payment_object: Option<PaymentObjectFfd105>,
     payment_method: Option<PaymentMethod>,
 }
 
@@ -802,7 +801,7 @@ impl Ffd105DataBuilder {
         self
     }
     /// Indication of a payment object.
-    pub fn with_payment_object(mut self, obj: PaymentObjectFFD_105) -> Self {
+    pub fn with_payment_object(mut self, obj: PaymentObjectFfd105) -> Self {
         self.payment_object = Some(obj);
         self
     }
@@ -869,13 +868,17 @@ impl Item {
     /// # Examples
     ///
     /// ```
-    /// let item_builder = ItemBuilder::builder(
+    /// use rust_decimal::Decimal;
+    /// use kopeck::domain::Kopeck;
+    /// use kopeck::mapi::receipt::item::{VatType, Item, CashBoxType};
+    ///
+    /// let item_builder = Item::builder(
     ///     "Chocolate Bar",
-    ///     Kopeck::new(4999),
+    ///     Kopeck::from_rub("50".parse().unwrap()).unwrap(),
     ///     Decimal::new(1, 0),
-    ///     Kopeck::new(4999),
+    ///     Kopeck::from_rub("50".parse().unwrap()).unwrap(),
     ///     VatType::Vat20,
-    ///     CashBoxType::Automated,
+    ///     Some(CashBoxType::Atol),
     /// );
     /// ```
     ///

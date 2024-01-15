@@ -1,5 +1,7 @@
 #![allow(dead_code)]
+
 use phonenumber::PhoneNumber;
+use serde::ser::SerializeSeq;
 use serde::Serializer;
 
 mod manager;
