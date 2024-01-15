@@ -17,7 +17,7 @@ pub static SIMPLE_DATE_FORMAT: &[time::format_description::FormatItem] =
     format_description!("[day].[month].[year]");
 
 #[derive(Serialize)]
-enum DocumentCode {
+pub enum DocumentCode {
     #[serde(rename = "21")]
     PassportRussianCitizen,
     #[serde(rename = "22")]
@@ -49,7 +49,7 @@ enum DocumentCode {
 }
 
 impl DocumentCode {
-    fn get_description(&self) -> &str {
+    pub fn get_description(&self) -> &str {
         match self {
             DocumentCode::PassportRussianCitizen => "Паспорт гражданина Российской Федерации",
             DocumentCode::PassportRussianCitizenDiplomaticService => "Паспорт гражданина Российской Федерации, дипломатический паспорт, служебный паспорт, удостоверяющие личность гражданина Российской Федерации за пределами Российской Федерации",
@@ -77,39 +77,37 @@ pub enum FfdVersion {
     Ver1_05,
 }
 
+/// Information about the client. Required for marked goods.
 #[derive(Serialize, Validate)]
 #[serde(rename_all = "PascalCase")]
 #[garde(allow_unvalidated)]
 pub struct ClientInfo {
+    /// The client's birth date
     #[serde(serialize_with = "serialize_date_simple")]
-    birth_date: PrimitiveDateTime,
-    // Числовой код страны, гражданином которой является клиент.
-    // Код страны указывается в соответствии с
-    // Общероссийским классификатором стран мира ОКСМ
-    citizenship: CountryCode,
-    document_code: DocumentCode,
-    // Реквизиты документа, удостоверяющего личность (например: серия и номер паспорта)
-    document_data: String,
-    // Адрес клиента, грузополучателя
+    pub birth_date: PrimitiveDateTime,
+    /// The numeric code of the country in which the client is a citizen.
+    /// The country code is specified according to the All-Russian
+    /// Classifier of Countries of the World (OKSM).
+    pub citizenship: CountryCode,
+    /// The numeric code of the document type that verifies identity.
+    pub document_code: DocumentCode,
+    /// The details of the document verifying the identity
+    /// (e.g., passport series and number).
+    pub document_data: String,
+    /// The address of the client or consignee.
     #[garde(length(max = 256))]
-    address: String,
+    pub address: String,
 }
 
-// Система налогообложения
+// Taxation system
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Taxation {
-    // общая СН
     Osn,
-    // упрощенная СН (доходы)
     UsnIncome,
-    // упрощенная СН (доходы минус расходы)
     UsnIncomeOutcome,
-    // Единый налог на вмененный доход
     Envd,
-    // Единый сельскохозяйственный налог
     Esn,
-    // Патентная СН
     Patent,
 }
 
@@ -271,6 +269,12 @@ impl ReceiptBuilder {
         self.customer_inn = Some(inn);
         self
     }
+    /// Детали платежа. Если объект не передан, будет автоматически
+    /// указана итоговая сумма чека с видом оплаты "Безналичный".
+    /// Если передан, то значение в Electronic должно быть равно итоговому значению
+    /// Amount в методе Init. При этом сумма введенных значений по всем видам оплат,
+    /// включая Electronic, должна быть равна сумме (Amount) всех товаров,
+    /// переданных в объекте receipt.Items.
     pub fn with_payments(mut self, payments: Payments) -> Self {
         self.payments = Some(payments);
         self
