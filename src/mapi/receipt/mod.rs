@@ -69,7 +69,7 @@ impl DocumentCode {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Debug, Clone)]
 pub enum FfdVersion {
     #[serde(rename = "1.2")]
     Ver1_2,
@@ -77,29 +77,29 @@ pub enum FfdVersion {
     Ver1_05,
 }
 
-/// Information about the client. Required for marked goods.
+/// Информация о клиенте. Обязательна для маркированных товаров.
 #[derive(Serialize, Validate)]
 #[serde(rename_all = "PascalCase")]
 #[garde(allow_unvalidated)]
 pub struct ClientInfo {
-    /// The client's birth date
+    /// Дата рождения клиента
     #[serde(serialize_with = "serialize_date_simple")]
     pub birth_date: PrimitiveDateTime,
-    /// The numeric code of the country in which the client is a citizen.
-    /// The country code is specified according to the All-Russian
-    /// Classifier of Countries of the World (OKSM).
+    /// Цифровой код страны, гражданином которой является клиент.
+    /// Код страны указывается в соответствии с Общероссийским
+    /// классификатором стран мира (ОКСМ).
     pub citizenship: CountryCode,
-    /// The numeric code of the document type that verifies identity.
+    /// Цифровой код типа документа, удостоверяющего личность.
     pub document_code: DocumentCode,
-    /// The details of the document verifying the identity
-    /// (e.g., passport series and number).
+    /// Детали документа, удостоверяющего личность
+    /// (например, серия и номер паспорта).
     pub document_data: String,
-    /// The address of the client or consignee.
+    /// Адрес клиента или получателя.
     #[garde(length(max = 256))]
     pub address: String,
 }
 
-// Taxation system
+/// Система налогообложения
 #[derive(Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Taxation {
@@ -178,6 +178,8 @@ pub enum ReceiptParseError {
     FfdIsNotRepresentedInItems,
     #[error("Validation error")]
     ValidationError(#[from] garde::Report),
+    #[error("For this ffd version: {0:?}, given values are not available")]
+    WrongValuesForFfdVersion(FfdVersion),
 }
 
 impl std::fmt::Debug for ReceiptParseError {
@@ -215,8 +217,6 @@ pub struct Receipt {
     payments: Option<Payments>,
 }
 
-// IF FFD is 105, customer, customer_inn, client info should be null
-
 impl Receipt {
     pub fn builder(taxation: Taxation) -> ReceiptBuilder {
         ReceiptBuilder {
@@ -248,6 +248,7 @@ impl ReceiptBuilder {
         self.ffd_version = Some(ver);
         self
     }
+    /// Только для ФФД 1.2.
     pub fn with_client_info(mut self, info: ClientInfo) -> Self {
         self.client_info = Some(info);
         self
@@ -260,11 +261,12 @@ impl ReceiptBuilder {
         self.email_or_phone = Some(EmailOrPhone::Phone(phone));
         self
     }
-    /// Идентификатор/Имя клиента.
+    /// Идентификатор/Имя клиента. Только для ФФД 1.2.
     pub fn with_customer(mut self, customer: String) -> Self {
         self.customer = Some(customer);
         self
     }
+    /// Только для ФФД 1.2.
     pub fn with_customer_inn(mut self, inn: String) -> Self {
         self.customer_inn = Some(inn);
         self
@@ -326,6 +328,16 @@ impl ReceiptBuilder {
                                 ReceiptParseError::FfdIsNotRepresentedInItems,
                             );
                         }
+                    }
+                    if receipt.client_info.is_some()
+                        || receipt.customer.is_some()
+                        || receipt.customer_inn.is_some()
+                    {
+                        return Err(
+                            ReceiptParseError::WrongValuesForFfdVersion(
+                                ffd.clone(),
+                            ),
+                        );
                     }
                 }
             }
