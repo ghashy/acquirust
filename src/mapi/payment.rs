@@ -463,10 +463,4 @@ mod tests {
         println!("Gott hash: {}", token);
         println!("Should be: 0024a00af7c350a3a67ca168ce06502aa72772456662e38696d48b56ee9c97d9")
     }
-
-    #[test]
-    fn test3() {
-        let client = reqwest::Client::new();
-        // let a = client.post("a").json().
-    }
 }

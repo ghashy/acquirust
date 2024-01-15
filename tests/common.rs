@@ -54,7 +54,7 @@ fn abc() {
     println!("{json}");
 }
 
-fn init_tracing() {
+fn _init_tracing() {
     use tracing_subscriber::fmt::format::FmtSpan;
     let subscriber = tracing_subscriber::fmt()
         .with_timer(tracing_subscriber::fmt::time::ChronoLocal::default())

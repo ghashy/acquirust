@@ -10,7 +10,6 @@ use crate::domain::Kopeck;
 use crate::error_chain_fmt;
 
 use self::item::Item;
-use self::item::PaymentMethod;
 
 pub mod item;
 

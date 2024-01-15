@@ -1,5 +1,3 @@
-use std::error::Error;
-
 use serde::Serialize;
 
 use crate::error_chain_fmt;
