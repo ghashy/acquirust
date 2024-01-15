@@ -16,7 +16,7 @@ fn abc() {
         "12".parse().unwrap(),
         Kopeck::from_rub("10".parse().unwrap()).unwrap(),
         kopeck::mapi::receipt::item::VatType::None,
-        kopeck::mapi::receipt::item::CashBoxType::Atol,
+        Some(kopeck::mapi::receipt::item::CashBoxType::Atol),
     )
     .with_ffd_105_data(Ffd105Data::builder().build().unwrap())
     .with_supplier_info(
