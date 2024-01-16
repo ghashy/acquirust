@@ -780,8 +780,8 @@ impl Item {
     ///
     /// ```
     /// use rust_decimal::Decimal;
-    /// use kopeck::domain::Kopeck;
-    /// use kopeck::mapi::receipt::item::{VatType, Item, CashBoxType};
+    /// use mapi::domain::Kopeck;
+    /// use mapi::receipt::item::{VatType, Item, CashBoxType};
     ///
     /// let item_builder = Item::builder(
     ///     "Шоколадный батончик",

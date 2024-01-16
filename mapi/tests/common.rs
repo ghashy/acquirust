@@ -51,9 +51,6 @@ async fn abc() {
             .build()
             .unwrap();
 
-    let json = serde_json::to_string_pretty(payment.innertest()).unwrap();
-    println!("{json}");
-
     let client =
         mapi::AcquiClient::new("https://securepay.tinkoff.ru/v2").unwrap();
     let response = client.execute(InitPaymentAction, payment).await.unwrap();

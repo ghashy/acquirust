@@ -1,8 +1,15 @@
 #![allow(dead_code)]
 
 use phonenumber::PhoneNumber;
+use rust_decimal::Decimal;
 use serde::ser::SerializeSeq;
+use serde::Deserialize;
 use serde::Serializer;
+use url::Url;
+
+use acquiconnect::ApiAction;
+
+use self::payment::Payment;
 
 pub mod domain;
 pub mod payment;
@@ -10,13 +17,6 @@ pub mod payment_data;
 pub mod receipt;
 
 pub use acquiconnect::AcquiClient;
-
-use acquiconnect::ApiAction;
-use rust_decimal::Decimal;
-use serde::Deserialize;
-use url::Url;
-
-use self::payment::Payment;
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]

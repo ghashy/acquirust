@@ -175,9 +175,6 @@ impl Payment {
     pub(super) fn inner(&self) -> &PaymentBuilder {
         &self.0
     }
-    pub fn innertest(&self) -> &PaymentBuilder {
-        &self.0
-    }
 }
 
 #[derive(Serialize, Validate)]

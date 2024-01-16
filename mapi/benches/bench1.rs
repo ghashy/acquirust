@@ -54,8 +54,6 @@ fn benchmark_payment_json_creation(c: &mut Criterion) {
             .with_receipt(receipt)
             .build()
             .unwrap();
-
-            let _ = serde_json::to_string_pretty(&payment.innertest()).unwrap();
         });
     });
 }
