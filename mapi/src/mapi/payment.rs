@@ -172,11 +172,11 @@ impl Payment {
             terminal_type,
         }
     }
-    pub(super) fn inner(self) -> PaymentBuilder {
-        self.0
+    pub(super) fn inner(&self) -> &PaymentBuilder {
+        &self.0
     }
-    pub fn innertest(self) -> PaymentBuilder {
-        self.0
+    pub fn innertest(&self) -> &PaymentBuilder {
+        &self.0
     }
 }
 

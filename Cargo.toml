@@ -1,42 +1,7 @@
-[package]
-name = "kopeck"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-reqwest = { version = "0.11.23", default-features = false, features = [
-  "json",
-  "rustls-tls",
-  "multipart",
-  "cookies",
-] }
-rust_decimal = "1.33.1"
-uuid = { version = "1.6.1", features = ["v4", "serde"] }
-url = { version = "2.5.0", features = ["serde"] }
-time = { version = "0.3.31", features = ["local-offset", "macros", "parsing", "serde"] }
-serde = { version = "1.0.195", features = ["derive"] }
-serde_json = "1.0.111"
-garde = { version = "0.17.0", features = ["derive"] }
-thiserror = "1.0.56"
-phonenumber = "0.3"
-tracing = "0.1.40"
-sha2 = "0.10.8"
-
-[dev-dependencies]
-criterion = "0.5.1"
-fake = "2.9.2"
-rand = { version = "0.8.5", features = ["std_rng"] }
-tracing-subscriber = { version = "0.3.18", features = [
-  "chrono",
-  "registry",
-  "env-filter",
-] }
-tokio = { version = "1.35.1", features = [
-  "macros",
-  "rt-multi-thread",
-  "signal",
-] }
-
-[[bench]]
-name = "bench1"
-harness = false # This tells Cargo not to use the default testing harness since we're using Criterion
+[workspace]
+members = [
+    "acquiconnect",
+    "acquisim",
+    "mapi"
+]
+resolver = "2"

@@ -4,11 +4,10 @@ use phonenumber::PhoneNumber;
 use serde::ser::SerializeSeq;
 use serde::Serializer;
 
-mod manager;
-mod payment_service;
-
 pub mod domain;
 pub mod mapi;
+
+pub use acquiconnect::AcquiClient;
 
 pub(crate) fn error_chain_fmt(
     e: &impl std::error::Error,

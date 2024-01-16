@@ -1,16 +1,17 @@
 // test
 
-use kopeck::domain::{Email, Kopeck};
-use kopeck::mapi::payment::{OrderId, Payment, TerminalType};
-use kopeck::mapi::payment_data::{OperationInitiatorType, PaymentData};
-use kopeck::mapi::receipt::item::{
+use mapi::domain::{Email, Kopeck};
+use mapi::mapi::payment::{OrderId, Payment, TerminalType};
+use mapi::mapi::payment_data::{OperationInitiatorType, PaymentData};
+use mapi::mapi::receipt::item::{
     CashBoxType, Ffd105Data, Item, SupplierInfo, VatType,
 };
-use kopeck::mapi::receipt::{FfdVersion, Receipt, Taxation};
+use mapi::mapi::receipt::{FfdVersion, Receipt, Taxation};
+use mapi::mapi::InitPaymentAction;
 use rust_decimal::Decimal;
 
-#[test]
-fn abc() {
+#[tokio::test]
+async fn abc() {
     let amount = Kopeck::from_rub(Decimal::new(10, 0)).unwrap();
     let item = Item::builder(
         "abc",
@@ -50,8 +51,13 @@ fn abc() {
             .build()
             .unwrap();
 
-    let json = serde_json::to_string_pretty(&payment.innertest()).unwrap();
+    let json = serde_json::to_string_pretty(payment.innertest()).unwrap();
     println!("{json}");
+
+    let client =
+        mapi::AcquiClient::new("https://securepay.tinkoff.ru/v2").unwrap();
+    let response = client.execute(InitPaymentAction, payment).await.unwrap();
+    dbg!(response);
 }
 
 fn _init_tracing() {
