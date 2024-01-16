@@ -1,13 +1,13 @@
 // test
 
 use mapi::domain::{Email, Kopeck};
-use mapi::mapi::payment::{OrderId, Payment, TerminalType};
-use mapi::mapi::payment_data::{OperationInitiatorType, PaymentData};
-use mapi::mapi::receipt::item::{
+use mapi::payment::{OrderId, Payment, TerminalType};
+use mapi::payment_data::{OperationInitiatorType, PaymentData};
+use mapi::receipt::item::{
     CashBoxType, Ffd105Data, Item, SupplierInfo, VatType,
 };
-use mapi::mapi::receipt::{FfdVersion, Receipt, Taxation};
-use mapi::mapi::InitPaymentAction;
+use mapi::receipt::{FfdVersion, Receipt, Taxation};
+use mapi::InitPaymentAction;
 use rust_decimal::Decimal;
 
 #[tokio::test]

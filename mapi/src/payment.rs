@@ -9,7 +9,7 @@ use url::Url;
 use super::payment_data::{OperationInitiatorType, PaymentData};
 use crate::domain::Kopeck;
 use crate::error_chain_fmt;
-use crate::mapi::receipt::Receipt;
+use crate::receipt::Receipt;
 
 pub enum OrderId {
     I32(i32),
