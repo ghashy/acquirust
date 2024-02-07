@@ -7,10 +7,13 @@ use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 
 use crate::{
+    active_payment::{ActivePayment, ActivePayments},
     bank::Bank,
     config::Settings,
     routes::{api::api_router, system::system_router},
 };
+
+mod tasks;
 
 type Server = Serve<IntoMakeService<Router>, Router>;
 
@@ -23,6 +26,7 @@ pub struct Application {
 pub struct AppState {
     pub settings: Arc<Settings>,
     pub bank: Bank,
+    pub active_payments: ActivePayments,
 }
 
 impl Application {
@@ -37,6 +41,7 @@ impl Application {
                 &config.bank_username,
             ),
             settings: Arc::new(config),
+            active_payments: ActivePayments::new(),
         };
 
         let app = Router::new()
