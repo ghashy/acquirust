@@ -346,6 +346,8 @@ impl PaymentBuilder {
     }
 
     fn generate_token(&self) -> Result<String, PaymentParseError> {
+        // We need to get values concatenated, sorted by key, so
+        // using BTreeMap here.
         let mut token_map = BTreeMap::new();
         token_map.insert("TerminalKey", self.terminal_key.clone());
         token_map.insert("Amount", self.amount.to_string());
