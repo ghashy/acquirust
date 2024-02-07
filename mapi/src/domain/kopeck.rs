@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use rust_decimal::Decimal;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error_chain_fmt;
 
@@ -23,7 +23,7 @@ impl std::fmt::Debug for KopeckError {
     }
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Deserialize)]
 pub struct Kopeck(u32);
 
 impl Kopeck {

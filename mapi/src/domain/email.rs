@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error_chain_fmt;
 
@@ -15,7 +15,7 @@ impl std::fmt::Debug for EmailError {
 }
 
 /// This type guarantees correctness of `subscriber's` email address.
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Email(String);
 
 impl Email {
