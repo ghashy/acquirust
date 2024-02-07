@@ -211,6 +211,7 @@ pub struct PaymentBuilder {
     )]
     redirect_due_date: Option<OffsetDateTime>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "DATA")]
     data: Option<PaymentData>,
     receipt: Option<Receipt>,
     #[serde(skip_serializing_if = "Option::is_none")]
