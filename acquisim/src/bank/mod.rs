@@ -10,7 +10,6 @@ use tokio::sync::{Mutex, MutexGuard, TryLockError};
 use crate::{error_chain_fmt, middleware::Credentials};
 use time::format_description::well_known::{iso8601, Iso8601};
 
-// TODO: POPULATE THAT INTO ALL SERIALIZATION LOGIC
 const SIMPLE_ISO: Iso8601<6651332276402088934156738804825718784> = Iso8601::<
     {
         iso8601::Config::DEFAULT
