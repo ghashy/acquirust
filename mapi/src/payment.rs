@@ -375,11 +375,11 @@ impl PaymentBuilder {
         if let Some(ref desc) = self.descriptor {
             token_map.insert("Descriptor", desc.clone());
         }
-        let concantenated = token_map.into_values().collect::<String>();
+        let concatenated = token_map.into_values().collect::<String>();
 
         // Hash the concatenated string with SHA-256
         let mut hasher: Sha256 = Digest::new();
-        hasher.update(concantenated);
+        hasher.update(concatenated);
         let hash_result = hasher.finalize();
 
         // Convert hash result to a hex string
