@@ -5,8 +5,12 @@ use rust_decimal::Decimal;
 use serde::ser::SerializeSeq;
 use serde::Deserialize;
 use serde::Serializer;
+use time::format_description::well_known::iso8601;
+use time::format_description::well_known::iso8601::TimePrecision;
+use time::format_description::well_known::Iso8601;
 use url::Url;
 
+pub use acquiconnect::AcquiClient;
 use acquiconnect::ApiAction;
 
 use self::payment::Payment;
@@ -17,7 +21,18 @@ pub mod payment;
 pub mod payment_data;
 pub mod receipt;
 
-pub use acquiconnect::AcquiClient;
+const SIMPLE_ISO: Iso8601<6651332276402088934156738804825718784> = Iso8601::<
+    {
+        iso8601::Config::DEFAULT
+            .set_year_is_six_digits(false)
+            .set_time_precision(TimePrecision::Second {
+                decimal_digits: None,
+            })
+            .encode()
+    },
+>;
+
+time::serde::format_description!(iso_format, OffsetDateTime, SIMPLE_ISO);
 
 #[derive(Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
