@@ -15,9 +15,9 @@ rust_decimal = "1.33.1"
 uuid = { version = "1.6.1", features = ["v4", "serde"] }
 url = { version = "2.5.0", features = ["serde"] }
 time = { version = "0.3.31", features = ["local-offset", "macros", "parsing", "serde"] }
-serde = { version = "1.0.195", features = ["derive"] }
-serde_json = "1.0.111"
-garde = { version = "0.17.0", features = ["derive"] }
+serde = { version = "1.0.196", features = ["derive"] }
+serde_json = "1.0.112"
+garde = { version = "0.18.0", features = ["derive", "email"] }
 thiserror = "1.0.56"
 phonenumber = "0.3"
 tracing = "0.1.40"
