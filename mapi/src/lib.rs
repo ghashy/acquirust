@@ -12,6 +12,7 @@ use acquiconnect::ApiAction;
 use self::payment::Payment;
 
 pub mod domain;
+pub mod notifications;
 pub mod payment;
 pub mod payment_data;
 pub mod receipt;
@@ -22,14 +23,23 @@ pub use acquiconnect::AcquiClient;
 #[serde(rename_all = "PascalCase")]
 pub struct InitPaymentResponse {
     success: bool,
+    /// Код ошибки. «0» в случае успеха
     error_code: String,
+    /// Ссылка на платежную форму (параметр возвращается только для Мерчантов без PCI DSS)
     payment_url: Option<Url>,
-    terminal_key: Option<String>,
-    status: Option<String>,
-    payment_id: Option<u64>,
-    order_id: Option<i32>,
-    amount: Option<Decimal>,
+    /// Идентификатор терминала. Выдается Мерчанту Тинькофф Кассой при заведении терминала.
+    terminal_key: String,
+    /// Статус транзакции
+    status: String,
+    /// Идентификатор платежа в системе Тинькофф Кассы
+    payment_id: u64,
+    /// Идентификатор заказа в системе Мерчанта
+    order_id: i32,
+    /// Сумма в копейках
+    amount: Decimal,
+    /// Краткое описание ошибки
     message: Option<String>,
+    /// Подробное описание ошибки
     details: Option<String>,
 }
 
