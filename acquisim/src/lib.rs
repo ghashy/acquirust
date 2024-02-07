@@ -1,3 +1,4 @@
+mod active_payment;
 mod bank;
 mod config;
 mod middleware;
