@@ -1,6 +1,7 @@
 use garde::Validate;
 use phonenumber::PhoneNumber;
 use rust_decimal::Decimal;
+use serde::Deserialize;
 use serde::{ser::Error, Serialize, Serializer};
 use time::PrimitiveDateTime;
 
@@ -72,7 +73,7 @@ impl std::fmt::Display for AgentSignParams {
 
 /// Данные агента.
 /// Для использования, если используется агентская схема.
-#[derive(Serialize, Validate, Default)]
+#[derive(Deserialize, Serialize, Validate, Default)]
 #[serde(rename_all = "PascalCase")]
 #[garde(allow_unvalidated)]
 pub struct AgentData {
@@ -218,7 +219,7 @@ impl AgentDataBuilder {
 // ───── SupplierInfo ─────────────────────────────────────────────────────── //
 
 /// Данные поставщика платежного агента
-#[derive(Serialize, Validate)]
+#[derive(Deserialize, Serialize, Validate)]
 #[serde(rename_all = "PascalCase")]
 #[garde(allow_unvalidated)]
 pub struct SupplierInfo {
@@ -294,7 +295,7 @@ impl std::fmt::Debug for ItemParseError {
 /// * vat20 - НДС по ставке 20%
 /// * vat110 - НДС чека по расчетной ставке 10/110
 /// * vat120 - НДС чека по расчетной ставке 20/120
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum VatType {
     None,
@@ -317,7 +318,7 @@ pub enum VatType {
 /// * `credit` – передача в кредит
 /// * `credit_payment` – оплата кредита
 /// Если значение не передано, по умолчанию в онлайн-кассу передается признак способа расчёта "full_payment".
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PaymentMethod {
     FullPrepayment,
@@ -330,7 +331,7 @@ pub enum PaymentMethod {
 }
 
 /// Значения реквизита "признак предмета расчета" (тег 1212) таблица 101
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PaymentObjectFfd12 {
     Commodity,                         // товар
@@ -367,7 +368,7 @@ pub enum PaymentObjectFfd12 {
 }
 
 /// Признак предмета расчёта
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum PaymentObjectFfd105 {
     Commodity,
@@ -386,7 +387,7 @@ pub enum PaymentObjectFfd105 {
 }
 
 /// Единицы измерения
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 pub enum MeasurementUnit {
     #[serde(rename = "шт")]
     Piece,
@@ -452,7 +453,7 @@ pub enum MeasurementUnit {
 /// `Egais20` - код товара в формате ЕГАИС-2.0.
 /// `Egais30` - код товара в формате ЕГАИС-3.0.
 /// `Rawcode` - Код маркировки, как он был прочитан сканером.
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "UPPERCASE")]
 pub enum MarkCodeType {
     Unknown,
@@ -476,7 +477,7 @@ pub enum MarkCodeType {
 ///
 /// Включается в чек в случае, если предметом расчета является товар,
 /// подлежащий обязательной маркировке средством идентификации.
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct MarkCode {
     /// Тип штрих кода.
@@ -490,7 +491,7 @@ pub struct MarkCode {
 /// Необходимо указывать только для товаров подлежащих обязательной маркировке
 /// средством идентификации и включение данного реквизита предусмотрено НПА
 /// отраслевого регулирования для соответствующей товарной группы.
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct SectoralItemProps {
     /// Идентификатор ФОИВ (федеральный орган исполнительной власти).
@@ -505,7 +506,7 @@ pub struct SectoralItemProps {
 }
 
 /// Фискальные данные транзакции согласно стандартам ФФД 1.2.
-#[derive(Serialize, Validate)]
+#[derive(Deserialize, Serialize, Validate)]
 #[garde(allow_unvalidated)]
 pub struct Ffd12Data {
     payment_object: PaymentObjectFfd12,
@@ -648,7 +649,7 @@ impl Ffd12DataBuilder {
 }
 
 /// Фискальные данные транзакции согласно стандартам ФФД 1.05.
-#[derive(Serialize, Validate)]
+#[derive(Deserialize, Serialize, Validate)]
 #[serde(rename_all = "PascalCase")]
 #[garde(allow_unvalidated)]
 pub struct Ffd105Data {
@@ -739,7 +740,7 @@ pub enum CashBoxType {
 /// для маркированных товаров, не являются обязательными для товаров
 /// без маркировки. Если используется ФФД 1.2, но продаваемый товар
 /// не подлежит маркировке, то поля могут не отправляться или отправляться со значением null.
-#[derive(Serialize, Validate)]
+#[derive(Deserialize, Serialize, Validate)]
 #[serde(rename_all = "PascalCase")]
 #[garde(allow_unvalidated)]
 pub struct Item {

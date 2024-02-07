@@ -1,6 +1,7 @@
 use garde::Validate;
 use phonenumber::PhoneNumber;
 use rust_decimal::Decimal;
+use serde::Deserialize;
 use serde::{ser::Error, ser::SerializeStruct, Serialize, Serializer};
 use time::{macros::format_description, PrimitiveDateTime};
 
@@ -16,7 +17,7 @@ pub mod item;
 pub static SIMPLE_DATE_FORMAT: &[time::format_description::FormatItem] =
     format_description!("[day].[month].[year]");
 
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 pub enum DocumentCode {
     #[serde(rename = "21")]
     PassportRussianCitizen,
@@ -69,7 +70,7 @@ impl DocumentCode {
     }
 }
 
-#[derive(Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub enum FfdVersion {
     #[serde(rename = "1.2")]
     Ver1_2,
@@ -78,7 +79,7 @@ pub enum FfdVersion {
 }
 
 /// Информация о клиенте. Обязательна для маркированных товаров.
-#[derive(Serialize, Validate)]
+#[derive(Deserialize, Serialize, Validate)]
 #[serde(rename_all = "PascalCase")]
 #[garde(allow_unvalidated)]
 pub struct ClientInfo {
@@ -100,7 +101,7 @@ pub struct ClientInfo {
 }
 
 /// Система налогообложения
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Taxation {
     Osn,
@@ -111,47 +112,47 @@ pub enum Taxation {
     Patent,
 }
 
-pub enum EmailOrPhone {
-    Email(Email),
-    Phone(phonenumber::PhoneNumber),
-}
+// pub enum EmailOrPhone {
+//     Email(Email),
+//     Phone(phonenumber::PhoneNumber),
+// }
 
-impl Serialize for EmailOrPhone {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            EmailOrPhone::Email(email) => {
-                let mut state =
-                    serializer.serialize_struct("EmailOrPhone", 1)?;
-                let email = email.as_ref();
-                if email.len() > 64 {
-                    return Err(S::Error::custom(
-                        "Email length exceeds 64 characters",
-                    ));
-                }
-                state.serialize_field("Email", email)?;
-                state.end()
-            }
-            EmailOrPhone::Phone(phone) => {
-                let mut state =
-                    serializer.serialize_struct("EmailOrPhone", 1)?;
-                let phone_number =
-                    phone.format().mode(phonenumber::Mode::E164).to_string();
-                if phone_number.len() > 64 {
-                    return Err(S::Error::custom(
-                        "Phone number length exceeds 64 characters",
-                    ));
-                }
-                state.serialize_field("Phone", &phone_number)?;
-                state.end()
-            }
-        }
-    }
-}
+// impl Serialize for EmailOrPhone {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: Serializer,
+//     {
+//         match self {
+//             EmailOrPhone::Email(email) => {
+//                 let mut state =
+//                     serializer.serialize_struct("EmailOrPhone", 1)?;
+//                 let email = email.as_ref();
+//                 if email.len() > 64 {
+//                     return Err(S::Error::custom(
+//                         "Email length exceeds 64 characters",
+//                     ));
+//                 }
+//                 state.serialize_field("Email", email)?;
+//                 state.end()
+//             }
+//             EmailOrPhone::Phone(phone) => {
+//                 let mut state =
+//                     serializer.serialize_struct("EmailOrPhone", 1)?;
+//                 let phone_number =
+//                     phone.format().mode(phonenumber::Mode::E164).to_string();
+//                 if phone_number.len() > 64 {
+//                     return Err(S::Error::custom(
+//                         "Phone number length exceeds 64 characters",
+//                     ));
+//                 }
+//                 state.serialize_field("Phone", &phone_number)?;
+//                 state.end()
+//             }
+//         }
+//     }
+// }
 
-#[derive(Serialize)]
+#[derive(Deserialize, Serialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct Payments {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -231,6 +232,8 @@ pub enum ReceiptParseError {
     ValidationError(#[from] garde::Report),
     #[error("For this ffd version: {0:?}, given values are not available")]
     WrongValuesForFfdVersion(FfdVersion),
+    #[error("Email or phone should be provided")]
+    EmailOrPhoneError,
 }
 
 impl std::fmt::Debug for ReceiptParseError {
@@ -239,7 +242,7 @@ impl std::fmt::Debug for ReceiptParseError {
     }
 }
 
-#[derive(Serialize, Validate)]
+#[derive(Deserialize, Serialize, Validate)]
 #[serde(rename_all = "PascalCase")]
 #[garde(allow_unvalidated)]
 pub struct Receipt {
@@ -248,8 +251,10 @@ pub struct Receipt {
     #[garde(dive)]
     client_info: Option<ClientInfo>,
     taxation: Taxation,
-    #[serde(skip_serializing_if = "Option::is_none", flatten)]
-    email_or_phone: Option<EmailOrPhone>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    email: Option<Email>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    phone: Option<phonenumber::PhoneNumber>,
     #[serde(skip_serializing_if = "Option::is_none")]
     customer: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -266,7 +271,8 @@ impl Receipt {
             ffd_version: None,
             client_info: None,
             taxation,
-            email_or_phone: None,
+            email: None,
+            phone: None,
             customer: None,
             customer_inn: None,
             items: Vec::new(),
@@ -279,7 +285,8 @@ pub struct ReceiptBuilder {
     ffd_version: Option<FfdVersion>,
     client_info: Option<ClientInfo>,
     taxation: Taxation,
-    email_or_phone: Option<EmailOrPhone>,
+    phone: Option<phonenumber::PhoneNumber>,
+    email: Option<Email>,
     customer: Option<String>,
     customer_inn: Option<String>,
     items: Vec<Item>,
@@ -301,13 +308,13 @@ impl ReceiptBuilder {
     /// Электронная почта клиента.
     /// Атрибут должен быть заполнен, если не передано значение в атрибуте “Phone”
     pub fn with_email(mut self, email: Email) -> Self {
-        self.email_or_phone = Some(EmailOrPhone::Email(email));
+        self.email = Some(email);
         self
     }
     /// Телефон клиента в формате +{Ц}
     /// Атрибут должен быть заполнен, если не передано значение в атрибуте “Email”.
     pub fn with_phone(mut self, phone: PhoneNumber) -> Self {
-        self.email_or_phone = Some(EmailOrPhone::Phone(phone));
+        self.phone = Some(phone);
         self
     }
     /// Идентификатор/Имя клиента. Только для ФФД 1.2.
@@ -345,13 +352,18 @@ impl ReceiptBuilder {
             ffd_version: self.ffd_version,
             client_info: self.client_info,
             taxation: self.taxation,
-            email_or_phone: self.email_or_phone,
+            email: self.email,
+            phone: self.phone,
             customer: self.customer,
             customer_inn: self.customer_inn,
             items: self.items,
             payments: self.payments,
         };
         receipt.validate(&())?;
+
+        if receipt.email.is_none() && receipt.phone.is_none() {
+            return Err(ReceiptParseError::EmailOrPhoneError);
+        }
 
         if let Some(ref ffd) = receipt.ffd_version {
             match ffd {
