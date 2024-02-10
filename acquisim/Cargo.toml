@@ -34,6 +34,7 @@ url = { version = "2.5.0", features = ["serde"] }
 time = { version = "0.3.34", features = ["local-offset", "macros", "parsing", "serde", "formatting"] }
 thiserror = "1.0.56"
 askama = "0.12.1"
+rand = { version = "0.8.5", features = ["std_rng"] }
 
 # Security
 secrecy = { version = "0.8.0", features = ["serde"] }
