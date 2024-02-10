@@ -7,7 +7,7 @@ edition = "2021"
 # Web-related dependencies
 axum = { version = "0.7.4", features = ["macros", "tracing"] }
 tower = { version = "0.4.13", features = ["timeout"] }
-tokio = { version = "1.35.1", features = [
+tokio = { version = "1.36.0", features = [
   "macros",
   "rt-multi-thread",
   "signal",
@@ -31,7 +31,7 @@ anyhow = "1.0.79"
 config = "0.13.4"
 uuid = { version = "1.7.0", features = ["v4", "serde"] }
 url = { version = "2.5.0", features = ["serde"] }
-time = { version = "0.3.31", features = ["local-offset", "macros", "parsing", "serde", "formatting"] }
+time = { version = "0.3.34", features = ["local-offset", "macros", "parsing", "serde", "formatting"] }
 rs_merkle = "1.4.2"
 thiserror = "1.0.56"
 
