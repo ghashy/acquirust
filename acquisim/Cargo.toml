@@ -32,11 +32,14 @@ config = "0.13.4"
 uuid = { version = "1.7.0", features = ["v4", "serde"] }
 url = { version = "2.5.0", features = ["serde"] }
 time = { version = "0.3.34", features = ["local-offset", "macros", "parsing", "serde", "formatting"] }
-rs_merkle = "1.4.2"
 thiserror = "1.0.56"
+askama = "0.12.1"
 
 # Security
 secrecy = { version = "0.8.0", features = ["serde"] }
 sha2 = "0.10.8"
 hex = "0.4.3"
 base64 = "0.21.7"
+
+[dev-dependencies]
+rs_merkle = "1.4.2"
