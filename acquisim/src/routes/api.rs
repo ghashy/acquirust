@@ -21,7 +21,7 @@ pub struct InitPaymentRequest {
     notification_url: Url,
     success_url: Url,
     fail_url: Url,
-    amount: i64,
+    pub amount: i64,
     token: String,
 }
 
