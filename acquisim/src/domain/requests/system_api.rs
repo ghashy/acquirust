@@ -1,6 +1,8 @@
 use secrecy::Secret;
 use serde::Deserialize;
 
+use crate::domain::card_number::CardNumber;
+
 #[derive(Deserialize)]
 pub struct AddAccountRequest {
     pub password: Secret<String>,
@@ -8,18 +10,18 @@ pub struct AddAccountRequest {
 
 #[derive(Deserialize)]
 pub struct DeleteAccountRequest {
-    pub card_number: uuid::Uuid,
+    pub card_number: CardNumber,
 }
 
 #[derive(Deserialize)]
 pub struct OpenCreditRequest {
-    pub card_number: uuid::Uuid,
+    pub card_number: CardNumber,
     pub amount: i64,
 }
 
 #[derive(Deserialize)]
 pub struct NewTransactionRequest {
-    pub from: uuid::Uuid,
-    pub to: uuid::Uuid,
+    pub from: CardNumber,
+    pub to: CardNumber,
     pub amount: i64,
 }
