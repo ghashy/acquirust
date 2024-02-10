@@ -1,6 +1,7 @@
 mod active_payment;
 mod bank;
 mod config;
+mod html_gen;
 mod middleware;
 mod routes;
 mod startup;
