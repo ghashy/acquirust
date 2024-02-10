@@ -1,15 +1,15 @@
 use serde::Serialize;
 
-use crate::bank::Transaction;
+use crate::{bank::Transaction, domain::card_number::CardNumber};
 
 #[derive(Serialize)]
 pub struct AddAccountResponse {
-    pub card_number: uuid::Uuid,
+    pub card_number: CardNumber,
 }
 
 #[derive(Serialize)]
 pub struct Account {
-    pub card_number: uuid::Uuid,
+    pub card_number: CardNumber,
     pub balance: i64,
     pub transactions: Vec<Transaction>,
 }
