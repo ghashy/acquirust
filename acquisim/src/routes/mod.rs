@@ -13,14 +13,17 @@ use tokio::sync::TryLockError;
 use url::Url;
 use uuid::Uuid;
 
-use crate::{html_gen::SubmitPaymentPage, startup::AppState};
+use crate::{
+    domain::card_number::CardNumber, html_gen::SubmitPaymentPage,
+    startup::AppState,
+};
 
 pub mod api;
 pub mod system;
 
 #[derive(Debug, Deserialize)]
 struct Credentials {
-    card_number: u32,
+    card_number: CardNumber,
     password: Secret<String>,
 }
 
