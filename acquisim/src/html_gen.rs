@@ -7,11 +7,11 @@ use askama::Template;
 // So we disable this
 #[template(path = "index.html", escape = "none")]
 pub struct SubmitPaymentPage {
-    price: u64,
+    price: i64,
 }
 
 impl SubmitPaymentPage {
-    pub fn new(price: u64) -> Self {
+    pub fn new(price: i64) -> Self {
         SubmitPaymentPage { price }
     }
 }
