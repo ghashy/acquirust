@@ -1,11 +1,8 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Fake bank</title>
     <style>
       * {
@@ -228,7 +225,7 @@
     <div class="content">
       <h1>Оплата банковской картой</h1>
       <p class="total">итого:</p>
-      <p class="price">{{1234}} KittyCoin</p>
+      <p class="price">{{ price }} KittyCoin</p>
       <form onsubmit="submit_form(event)">
         <div class="card">
           <div class="card_front">
@@ -244,29 +241,14 @@
               />
 
               <label for="password">Пароль</label>
-              <input
-                type="text"
-                id="password"
-                placeholder="Пароль"
-                required
-              />
+              <input type="text" id="password" placeholder="Пароль" required />
             </div>
 
             <fieldset>
               <legend>Действует до</legend>
-              <input
-                type="text"
-                id="month"
-                placeholder="ММ"
-                disabled
-              />
+              <input type="text" id="month" placeholder="ММ" disabled />
               <p class="slash">/</p>
-              <input
-                type="text"
-                id="year"
-                placeholder="ГГ"
-                disabled
-              />
+              <input type="text" id="year" placeholder="ГГ" disabled />
             </fieldset>
           </div>
 
@@ -275,24 +257,15 @@
 
             <div class="ccv">
               <label for="ccv">CCV/CVC</label>
-              <input
-                type="text"
-                id="ccv"
-                placeholder="000"
-                disabled
-              />
+              <input type="text" id="ccv" placeholder="000" disabled />
             </div>
 
             <p class="ccv_prompt">три цифры с обратной стороны карты</p>
           </div>
         </div>
 
-        <button
-          type="submit"
-          id="submit_button"
-          disabled
-        >
-          Оплатить {{1234}} KittyCoin
+        <button type="submit" id="submit_button" disabled>
+          Оплатить {{ price }} KittyCoin
         </button>
       </form>
     </div>
