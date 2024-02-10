@@ -7,7 +7,9 @@ use time::{
 };
 use tokio::sync::{Mutex, MutexGuard, TryLockError};
 
-use crate::{error_chain_fmt, middleware::Credentials};
+use crate::{
+    domain::card_number::CardNumber, error_chain_fmt, middleware::Credentials,
+};
 use time::format_description::well_known::{iso8601, Iso8601};
 
 const SIMPLE_ISO: Iso8601<6651332276402088934156738804825718784> = Iso8601::<
@@ -48,8 +50,6 @@ impl std::fmt::Debug for BankOperationError {
     }
 }
 
-type CardNumber = uuid::Uuid;
-
 #[derive(Serialize, Clone, Debug)]
 pub struct Transaction {
     sender: Account,
@@ -69,7 +69,7 @@ pub struct Account {
 
 impl Account {
     pub fn card(&self) -> CardNumber {
-        self.card_number
+        self.card_number.clone()
     }
 }
 
@@ -94,7 +94,7 @@ impl Bank {
     /// Constructor
     pub fn new(cashbox_pass: &Secret<String>, bank_username: &str) -> Self {
         let system_account = Account {
-            card_number: uuid::Uuid::new_v4(),
+            card_number: CardNumber::generate(),
             password: cashbox_pass.clone(),
             is_existing: true,
         };
@@ -128,7 +128,7 @@ impl Bank {
     pub async fn add_account(&self, password: &Secret<String>) -> CardNumber {
         let mut guard = self.lock().await;
         let account = Account {
-            card_number: uuid::Uuid::new_v4(),
+            card_number: CardNumber::generate(),
             is_existing: true,
             password: password.clone(),
         };
@@ -163,7 +163,7 @@ impl Bank {
         let mut accounts = Vec::new();
         for acc in lock.accounts.iter() {
             accounts.push(crate::domain::responses::system_api::Account {
-                card_number: acc.card_number,
+                card_number: acc.card_number.clone(),
                 balance: self.balance(&lock, acc),
                 transactions: self.account_transactions(&lock, acc),
             })
@@ -303,20 +303,20 @@ mod tests {
     use secrecy::Secret;
     use time::OffsetDateTime;
 
-    use crate::bank::SIMPLE_ISO;
+    use crate::{bank::SIMPLE_ISO, domain::card_number::CardNumber};
 
     use super::Transaction;
 
     #[test]
-    fn testme() {
+    fn testmeme() {
         let transaction = Transaction {
             sender: super::Account {
-                card_number: uuid::Uuid::new_v4(),
+                card_number: CardNumber::generate(),
                 password: Secret::new("abc".to_string()),
                 is_existing: true,
             },
             recipient: super::Account {
-                card_number: uuid::Uuid::new_v4(),
+                card_number: CardNumber::generate(),
                 password: Secret::new("abc".to_string()),
                 is_existing: true,
             },
