@@ -1,11 +1,12 @@
 use std::sync::Arc;
 
-use axum::routing::IntoMakeService;
+use axum::routing::{self, IntoMakeService};
 use axum::serve::Serve;
 use axum::Router;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
 
+use crate::routes::get_payment_html_page;
 use crate::{
     active_payment::{ActivePayment, ActivePayments},
     bank::Bank,
@@ -45,6 +46,8 @@ impl Application {
         };
 
         let app = Router::new()
+            .route("/payment/:id", routing::get(get_payment_html_page))
+            .with_state(app_state.clone())
             .nest("/api", api_router(app_state.clone()))
             .nest("/system", system_router(app_state));
 
