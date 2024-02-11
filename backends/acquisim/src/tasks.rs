@@ -1,9 +1,7 @@
-use std::time::Duration;
-
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use super::AppState;
+use crate::startup::AppState;
 
 pub fn watch_and_delete_active_payment(
     app_state: AppState,

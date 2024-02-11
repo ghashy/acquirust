@@ -1,10 +1,12 @@
-use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
+use std::sync::{Arc, Mutex};
 
-use anyhow::Context;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{error_chain_fmt, routes::api::InitPaymentRequest};
+use crate::{
+    domain::card_number::CardNumber, error_chain_fmt,
+    routes::api::InitPaymentRequest,
+};
 
 #[derive(thiserror::Error)]
 pub enum ActivePaymentsError {
@@ -20,10 +22,18 @@ impl std::fmt::Debug for ActivePaymentsError {
     }
 }
 
+#[derive(Clone)]
 pub struct ActivePayment {
     pub request: InitPaymentRequest,
-    creation_time: OffsetDateTime,
+    pub store_card: CardNumber,
+    _creation_time: OffsetDateTime,
     id: Uuid,
+}
+
+impl ActivePayment {
+    pub fn id(&self) -> Uuid {
+        self.id
+    }
 }
 
 #[derive(Clone)]
@@ -37,7 +47,8 @@ impl ActivePayments {
     pub fn create_payment(
         &self,
         request: InitPaymentRequest,
-    ) -> Result<Uuid, ActivePaymentsError> {
+        store_card: CardNumber,
+    ) -> Result<(Uuid, OffsetDateTime), ActivePaymentsError> {
         let id = Uuid::new_v4();
         let now = OffsetDateTime::now_utc();
         self.0
@@ -45,10 +56,11 @@ impl ActivePayments {
             .map_err(|e| ActivePaymentsError::MutexError(e.to_string()))?
             .push(ActivePayment {
                 request,
-                creation_time: now,
+                store_card,
+                _creation_time: now,
                 id,
             });
-        Ok(id)
+        Ok((id, now))
     }
 
     pub fn remove_payment(&self, id: Uuid) -> Result<(), ActivePaymentsError> {
@@ -66,12 +78,12 @@ impl ActivePayments {
         &self,
         id: Uuid,
     ) -> Result<ActivePayment, ActivePaymentsError> {
-        let mut lock = self
+        let lock = self
             .0
             .lock()
             .map_err(|e| ActivePaymentsError::MutexError(e.to_string()))?;
-        if let Some(pos) = lock.iter().position(|p| p.id.eq(&id)) {
-            Ok(lock.swap_remove(pos))
+        if let Some(payment) = lock.iter().find(|p| p.id.eq(&id)) {
+            Ok(payment.clone())
         } else {
             Err(ActivePaymentsError::NoPaymentError(id))
         }

@@ -44,7 +44,7 @@ fn benchmark_payment_json_creation(c: &mut Criterion) {
                 .with_email(Email::parse("ghashy@gmail.com").unwrap())
                 .build()
                 .unwrap();
-            let payment = Payment::builder(
+            let _payment = Payment::builder(
                 "a",
                 amount,
                 OrderId::I32(1),

@@ -1,6 +1,5 @@
 use std::collections::BTreeMap;
 
-use anyhow::Context;
 use axum::{
     extract::State, http::StatusCode, response::IntoResponse, routing, Json,
     Router,
@@ -11,12 +10,15 @@ use sha2::{self, Digest, Sha256};
 use tokio::sync::TryLockError;
 use url::Url;
 
-use crate::{bank::BankOperationError, error_chain_fmt, startup::AppState};
+use crate::{
+    active_payment::ActivePaymentsError, bank::BankOperationError,
+    error_chain_fmt, startup::AppState, tasks::watch_and_delete_active_payment,
+};
 
 // ───── Request Types ────────────────────────────────────────────────────── //
 
 /// Initial payment operation, basic of acquiring
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct InitPaymentRequest {
     notification_url: Url,
     success_url: Url,
@@ -61,6 +63,10 @@ enum ApiError {
     BankOperationError(#[from] BankOperationError),
     #[error("Unauthorized operation")]
     UnauthorizedError,
+    #[error("Active payment operation fail")]
+    ActivePaymentsError(#[from] ActivePaymentsError),
+    #[error("Failed to parse url")]
+    UrlParsingError(#[from] url::ParseError),
 }
 
 impl std::fmt::Debug for ApiError {
@@ -83,6 +89,12 @@ impl IntoResponse for ApiError {
                 StatusCode::UNAUTHORIZED.into_response()
             }
             ApiError::UnexpectedError(_) => {
+                StatusCode::INTERNAL_SERVER_ERROR.into_response()
+            }
+            ApiError::ActivePaymentsError(_) => {
+                StatusCode::NOT_FOUND.into_response()
+            }
+            ApiError::UrlParsingError(_) => {
                 StatusCode::INTERNAL_SERVER_ERROR.into_response()
             }
         }
@@ -108,7 +120,22 @@ async fn init_payment(
         return Err(ApiError::UnauthorizedError);
     }
 
-    Ok(Json(InitPaymentResponse {
-        payment_url: "".parse().context("Failed to parse url")?,
-    }))
+    let store_card = state.bank.get_store_account().await.card();
+
+    let (active_payment_id, created_at) =
+        state.active_payments.create_payment(req, store_card)?;
+
+    watch_and_delete_active_payment(
+        state.clone(),
+        active_payment_id,
+        created_at,
+    );
+
+    let url = format!(
+        "{}:{}/payment/{}",
+        state.settings.addr, state.settings.port, active_payment_id
+    );
+    let payment_url = url::Url::parse(&url)?;
+
+    Ok(Json(InitPaymentResponse { payment_url }))
 }

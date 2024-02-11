@@ -2,7 +2,7 @@ use garde::Validate;
 use phonenumber::PhoneNumber;
 use rust_decimal::Decimal;
 use serde::Deserialize;
-use serde::{ser::Error, ser::SerializeStruct, Serialize, Serializer};
+use serde::{ser::Error, Serialize, Serializer};
 use time::{macros::format_description, PrimitiveDateTime};
 
 use crate::domain::CountryCode;

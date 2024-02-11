@@ -7,6 +7,7 @@ mod routes;
 mod startup;
 
 pub mod domain;
+pub mod tasks;
 
 pub use config::Settings;
 pub use startup::Application;

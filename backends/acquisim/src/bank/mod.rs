@@ -82,7 +82,8 @@ impl std::cmp::PartialEq for Account {
 struct BankInner {
     accounts: Vec<Account>,
     transactions: Vec<Transaction>,
-    system_account: Account,
+    emission_account: Account,
+    store_account: Account,
     bank_username: String,
 }
 
@@ -93,14 +94,22 @@ impl Bank {
 
     /// Constructor
     pub fn new(cashbox_pass: &Secret<String>, bank_username: &str) -> Self {
-        let system_account = Account {
+        let emission_account = Account {
             card_number: CardNumber::generate(),
             password: cashbox_pass.clone(),
             is_existing: true,
         };
+
+        let store_account = Account {
+            card_number: CardNumber::generate(),
+            password: cashbox_pass.clone(),
+            is_existing: true,
+        };
+
         let bank = BankInner {
             accounts: Vec::new(),
-            system_account,
+            emission_account,
+            store_account,
             transactions: Vec::new(),
             bank_username: bank_username.to_string(),
         };
@@ -114,7 +123,7 @@ impl Bank {
     ) -> Result<(), BankOperationError> {
         let guard = self.lock().await;
         let bank_username = &guard.bank_username;
-        let password = guard.system_account.password.expose_secret();
+        let password = guard.emission_account.password.expose_secret();
         if bank_username.eq(&credentials.username)
             && password.eq(credentials.password.expose_secret())
         {
@@ -204,6 +213,11 @@ impl Bank {
         Ok(account.clone())
     }
 
+    pub async fn get_store_account(&self) -> Account {
+        let guard = self.lock().await;
+        guard.store_account.clone()
+    }
+
     fn balance(
         &self,
         guard: &MutexGuard<'_, BankInner>,
@@ -281,7 +295,7 @@ impl Bank {
 
         let mut guard = self.lock().await;
         let transaction = Transaction {
-            sender: guard.system_account.clone(),
+            sender: guard.emission_account.clone(),
             recipient: account,
             amount,
             datetime: OffsetDateTime::now_utc(),

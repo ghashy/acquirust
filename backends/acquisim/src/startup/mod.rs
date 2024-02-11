@@ -4,22 +4,19 @@ use axum::routing::{self, IntoMakeService};
 use axum::serve::Serve;
 use axum::Router;
 use tokio::net::TcpListener;
-use tokio::sync::Mutex;
 
-use crate::routes::get_payment_html_page;
+use crate::routes::{get_payment_html_page, trigger_payment};
 use crate::{
-    active_payment::{ActivePayment, ActivePayments},
+    active_payment::ActivePayments,
     bank::Bank,
     config::Settings,
     routes::{api::api_router, system::system_router},
 };
 
-mod tasks;
-
 type Server = Serve<IntoMakeService<Router>, Router>;
 
 pub struct Application {
-    port: u16,
+    _port: u16,
     server: Server,
 }
 
@@ -47,13 +44,17 @@ impl Application {
 
         let app = Router::new()
             .route("/payment/:id", routing::get(get_payment_html_page))
+            .route("payment", routing::post(trigger_payment))
             .with_state(app_state.clone())
             .nest("/api", api_router(app_state.clone()))
-            .nest("/system", system_router(app_state));
+            .nest("/system", system_router(app_state.clone()));
 
         let server = axum::serve(listener, app.into_make_service());
 
-        Ok(Self { port, server })
+        Ok(Self {
+            _port: port,
+            server,
+        })
     }
 
     pub async fn run_until_stopped(self) -> Result<(), std::io::Error> {
