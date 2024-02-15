@@ -120,11 +120,14 @@ async fn init_payment(
         return Err(ApiError::UnauthorizedError);
     }
 
+    // We have only one store account in our virtual bank
     let store_card = state.bank.get_store_account().await.card();
 
+    // We store active payments in the RAM for simplicity
     let (active_payment_id, created_at) =
         state.active_payments.create_payment(req, store_card)?;
 
+    // Launch async task which will track our payment
     watch_and_delete_active_payment(
         state.clone(),
         active_payment_id,
@@ -132,9 +135,10 @@ async fn init_payment(
     );
 
     let url = format!(
-        "{}:{}/payment/{}",
+        "{}:{}/payment_page/{}",
         state.settings.addr, state.settings.port, active_payment_id
     );
+
     let payment_url = url::Url::parse(&url)?;
 
     Ok(Json(InitPaymentResponse { payment_url }))

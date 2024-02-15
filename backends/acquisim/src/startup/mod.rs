@@ -43,8 +43,8 @@ impl Application {
         };
 
         let app = Router::new()
-            .route("/payment/:id", routing::get(get_payment_html_page))
-            .route("payment", routing::post(trigger_payment))
+            .route("/payment_page/:id", routing::get(get_payment_html_page))
+            .route("/payment", routing::post(trigger_payment))
             .with_state(app_state.clone())
             .nest("/api", api_router(app_state.clone()))
             .nest("/system", system_router(app_state.clone()));
