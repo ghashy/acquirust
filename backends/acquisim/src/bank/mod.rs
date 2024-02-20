@@ -314,36 +314,6 @@ impl Bank {
 #[cfg(test)]
 mod tests {
     use rs_merkle::{Hasher, MerkleTree};
-    use secrecy::Secret;
-    use time::OffsetDateTime;
-
-    use crate::{bank::SIMPLE_ISO, domain::card_number::CardNumber};
-
-    use super::Transaction;
-
-    #[test]
-    fn testmeme() {
-        let transaction = Transaction {
-            sender: super::Account {
-                card_number: CardNumber::generate(),
-                password: Secret::new("abc".to_string()),
-                is_existing: true,
-            },
-            recipient: super::Account {
-                card_number: CardNumber::generate(),
-                password: Secret::new("abc".to_string()),
-                is_existing: true,
-            },
-            amount: 10,
-            datetime: OffsetDateTime::now_utc(),
-        };
-
-        let abc = serde_json::to_string_pretty(&transaction).unwrap();
-        println!("{abc}");
-
-        let now = OffsetDateTime::now_utc();
-        println!("Now: {}", now.format(&SIMPLE_ISO).unwrap());
-    }
 
     #[test]
     #[ignore]
