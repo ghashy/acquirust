@@ -4,6 +4,10 @@ use axum::response::IntoResponse;
 use axum::routing;
 use axum::Json;
 use axum::Router;
+use fastwebsockets::upgrade;
+use fastwebsockets::Frame;
+use fastwebsockets::OpCode;
+use fastwebsockets::WebSocketError;
 use tokio::sync::TryLockError;
 
 use crate::bank::BankOperationError;
@@ -58,6 +62,8 @@ pub fn system_router(state: AppState) -> Router {
         .route("/credit", routing::post(open_credit))
         .route("/transaction", routing::post(new_transaction))
         .route("/list_transactions", routing::get(list_transactions))
+        .route("/ws", routing::get(ws_handler))
+        .route("/subscribe_on_traces", routing::get(ws_traces))
         .with_state(state.clone())
         .layer(BasicAuthLayer { state })
 }
@@ -117,4 +123,57 @@ async fn list_transactions(
     State(state): State<AppState>,
 ) -> Json<Vec<Transaction>> {
     Json(state.bank.list_transactions().await)
+}
+
+#[tracing::instrument(name = "Establishing a web socket connection", skip_all)]
+async fn ws_handler(
+    State(state): State<AppState>,
+    ws: upgrade::IncomingUpgrade,
+) -> impl IntoResponse {
+    let (response, fut) = ws.upgrade().unwrap();
+
+    tokio::task::spawn(async move {
+        if let Err(e) = handle_client(state, fut).await {
+            eprintln!("Error in websocket connection: {}", e);
+        }
+    });
+
+    response
+}
+
+#[tracing::instrument(name = "Register a ws traces subscriber", skip_all)]
+async fn ws_traces(
+    State(state): State<AppState>,
+    ws: upgrade::IncomingUpgrade,
+) -> impl IntoResponse {
+    let (response, fut) = ws.upgrade().unwrap();
+    state.ws_appender.add_subscriber(fut).await;
+    response
+}
+
+async fn handle_client(
+    state: AppState,
+    fut: upgrade::UpgradeFut,
+) -> Result<(), WebSocketError> {
+    tracing::info!("Got WS connection!");
+    let mut ws = fastwebsockets::FragmentCollector::new(fut.await?);
+
+    loop {
+        let frame = ws.read_frame().await?;
+        match frame.opcode {
+            OpCode::Close => break,
+            OpCode::Text | OpCode::Binary => {
+                ws.write_frame(frame).await?;
+            }
+            OpCode::Ping => {
+                ws.write_frame(Frame::pong(fastwebsockets::Payload::Owned(
+                    vec![],
+                )))
+                .await?
+            }
+            _ => {}
+        }
+    }
+
+    Ok(())
 }
