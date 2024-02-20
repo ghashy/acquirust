@@ -322,7 +322,7 @@
 
         const post_data = async () => {
           try {
-            const response = await fetch("API", {
+            const response = await fetch("{{ post_payment_url }}", {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",

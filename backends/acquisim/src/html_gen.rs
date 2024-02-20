@@ -1,4 +1,5 @@
 use askama::Template;
+use url::Url;
 use uuid::Uuid;
 
 #[derive(Template)]
@@ -11,11 +12,16 @@ use uuid::Uuid;
 pub struct SubmitPaymentPage {
     price: i64,
     payment_id: Uuid,
+    post_payment_url: Url,
 }
 
 impl SubmitPaymentPage {
-    pub fn new(price: i64, payment_id: Uuid) -> Self {
-        SubmitPaymentPage { price, payment_id }
+    pub fn new(price: i64, payment_id: Uuid, post_payment_url: Url) -> Self {
+        SubmitPaymentPage {
+            price,
+            payment_id,
+            post_payment_url,
+        }
     }
 }
 
@@ -28,7 +34,11 @@ mod tests {
 
     #[test]
     fn test_template_creation() {
-        let page = SubmitPaymentPage::new(10, Uuid::new_v4());
+        let page = SubmitPaymentPage::new(
+            10,
+            Uuid::new_v4(),
+            "http://mydomain/path".parse().unwrap(),
+        );
         assert!(page.render().is_ok())
     }
 }

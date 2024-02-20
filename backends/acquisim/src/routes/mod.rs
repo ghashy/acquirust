@@ -21,7 +21,6 @@ pub mod system;
 pub struct Credentials {
     card_number: CardNumber,
     password: Secret<String>,
-    payment_id: Uuid,
 }
 
 #[tracing::instrument(name = "Get payment html page", skip_all)]
@@ -29,9 +28,26 @@ pub async fn get_payment_html_page(
     State(state): State<AppState>,
     Path(payment_id): Path<Uuid>,
 ) -> Result<Html<String>, StatusCode> {
+    let post_payment_url = match format!(
+        "http://{}:{}/payment/{}",
+        state.settings.addr, state.settings.port, payment_id
+    )
+    .parse()
+    {
+        Ok(url) => url,
+        Err(e) => {
+            tracing::error!("Failed to parse string as url: {e}");
+            return Err(StatusCode::INTERNAL_SERVER_ERROR);
+        }
+    };
+
     match state.active_payments.try_acquire_payment(payment_id) {
-        Ok(p) => match SubmitPaymentPage::new(p.request.amount, payment_id)
-            .render()
+        Ok(p) => match SubmitPaymentPage::new(
+            p.request.amount,
+            payment_id,
+            post_payment_url,
+        )
+        .render()
         {
             Ok(body) => Ok(Html(body)),
             Err(e) => {
@@ -49,17 +65,17 @@ pub async fn get_payment_html_page(
 #[tracing::instrument(name = "Trigger payment", skip_all)]
 pub async fn trigger_payment(
     State(state): State<AppState>,
+    Path(payment_id): Path<Uuid>,
     Json(creds): Json<Credentials>,
 ) -> Result<StatusCode, StatusCode> {
-    let payment =
-        match state.active_payments.try_acquire_payment(creds.payment_id) {
-            Ok(p) => p,
-            Err(e) => {
-                // No such payment
-                tracing::error!("Payment not found: {e}");
-                return Err(StatusCode::BAD_REQUEST);
-            }
-        };
+    let payment = match state.active_payments.try_acquire_payment(payment_id) {
+        Ok(p) => p,
+        Err(e) => {
+            // No such payment
+            tracing::error!("Payment not found: {e}");
+            return Err(StatusCode::BAD_REQUEST);
+        }
+    };
 
     // Authorize card and password
     let account = match state
