@@ -1,0 +1,13 @@
+# Init payment test request
+curl -v -X POST localhost:15100/api/Init \
+    -H 'Content-Type: application/json' \
+    --data-raw '
+
+    {
+        "notification_url":"http://mydomain/location",
+        "success_url":"http://mydomain/location",
+        "fail_url":"http://mydomain/location",
+        "amount":123,
+        "token":"e616fcbe31ceca760750a907d8c235e50b0b107901b4a0fea7bfa05097cfb1ed"
+    }'
+
