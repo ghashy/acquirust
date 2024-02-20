@@ -12,6 +12,7 @@ tokio = { version = "1.36.0", features = [
   "rt-multi-thread",
   "signal",
 ] }
+fastwebsockets = { version = "0.7.0", features = ["upgrade", "with_axum"] }
 
 # Serialization-related dependencies
 serde = { version = "1.0.196", features = ["derive"] }
@@ -24,6 +25,7 @@ tracing-subscriber = { version = "0.3.18", features = [
   "registry",
   "env-filter",
 ] }
+tracing-appender = "0.2.3"
 
 # Utility and miscellaneous dependencies
 futures = "0.3.30"
