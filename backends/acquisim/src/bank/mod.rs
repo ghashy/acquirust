@@ -5,7 +5,10 @@ use serde::Serialize;
 use time::{
     format_description::well_known::iso8601::TimePrecision, OffsetDateTime,
 };
-use tokio::sync::{Mutex, MutexGuard, TryLockError};
+use tokio::sync::{
+    broadcast::{Receiver, Sender},
+    Mutex, MutexGuard, TryLockError,
+};
 
 use crate::{
     domain::card_number::CardNumber, error_chain_fmt, middleware::Credentials,
@@ -85,6 +88,8 @@ struct BankInner {
     emission_account: Account,
     store_account: Account,
     bank_username: String,
+    notifier: Sender<()>,
+    subscriber: Receiver<()>,
 }
 
 impl Bank {
@@ -92,8 +97,14 @@ impl Bank {
         self.0.lock().await
     }
 
+    pub async fn subscribe(&self) -> Receiver<()> {
+        self.lock().await.notifier.subscribe()
+    }
+
     /// Constructor
     pub fn new(cashbox_pass: &Secret<String>, bank_username: &str) -> Self {
+        let (tx, rx) = tokio::sync::broadcast::channel(100);
+
         let emission_account = Account {
             card_number: CardNumber::generate(),
             password: cashbox_pass.clone(),
@@ -112,6 +123,8 @@ impl Bank {
             store_account,
             transactions: Vec::new(),
             bank_username: bank_username.to_string(),
+            notifier: tx,
+            subscriber: rx,
         };
         Bank(Arc::new(Mutex::new(bank)))
     }
@@ -142,6 +155,9 @@ impl Bank {
             password: password.clone(),
         };
         guard.accounts.push(account.clone());
+
+        Self::notify(&guard);
+
         account.card_number
     }
 
@@ -151,7 +167,7 @@ impl Bank {
         card: CardNumber,
     ) -> Result<(), BankOperationError> {
         let mut guard = self.lock().await;
-        match guard
+        let result = match guard
             .accounts
             .iter_mut()
             .find(|acc| acc.card_number.eq(&card))
@@ -161,7 +177,11 @@ impl Bank {
                 Ok(())
             }
             None => Err(BankOperationError::AccountNotFound),
-        }
+        };
+
+        Self::notify(&guard);
+
+        result
     }
 
     /// Get Vec<Account>
@@ -175,6 +195,7 @@ impl Bank {
                 card_number: acc.card_number.clone(),
                 balance: self.balance(&lock, acc),
                 transactions: self.account_transactions(&lock, acc),
+                exists: acc.is_existing,
             })
         }
         accounts
@@ -283,6 +304,8 @@ impl Bank {
 
         guard.transactions.push(transaction);
 
+        Self::notify(&guard);
+
         Ok(())
     }
 
@@ -303,11 +326,21 @@ impl Bank {
 
         guard.transactions.push(transaction);
 
+        Self::notify(&guard);
+
         Ok(())
     }
 
     pub async fn list_transactions(&self) -> Vec<Transaction> {
         self.lock().await.transactions.clone()
+    }
+
+    fn notify(guard: &MutexGuard<'_, BankInner>) {
+        // I want to notify my subscribers to update their accounts info
+        // after every bank lock
+        if let Err(e) = guard.notifier.send(()) {
+            tracing::error!("Failed to send bank lock notification: {e}");
+        }
     }
 }
 

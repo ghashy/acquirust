@@ -62,7 +62,7 @@ pub fn system_router(state: AppState) -> Router {
         .route("/credit", routing::post(open_credit))
         .route("/transaction", routing::post(new_transaction))
         .route("/list_transactions", routing::get(list_transactions))
-        .route("/ws", routing::get(ws_handler))
+        .route("/subscribe_on_accounts", routing::get(ws_accounts))
         .route("/subscribe_on_traces", routing::get(ws_traces))
         .with_state(state.clone())
         .layer(BasicAuthLayer { state })
@@ -125,15 +125,15 @@ async fn list_transactions(
     Json(state.bank.list_transactions().await)
 }
 
-#[tracing::instrument(name = "Establishing a web socket connection", skip_all)]
-async fn ws_handler(
+#[tracing::instrument(name = "Register a ws accounts subscriber", skip_all)]
+async fn ws_accounts(
     State(state): State<AppState>,
     ws: upgrade::IncomingUpgrade,
 ) -> impl IntoResponse {
     let (response, fut) = ws.upgrade().unwrap();
 
     tokio::task::spawn(async move {
-        if let Err(e) = handle_client(state, fut).await {
+        if let Err(e) = handle_accounts_subscriber(state, fut).await {
             eprintln!("Error in websocket connection: {}", e);
         }
     });
@@ -151,29 +151,53 @@ async fn ws_traces(
     response
 }
 
-async fn handle_client(
+// ───── Functions ────────────────────────────────────────────────────────── //
+
+async fn handle_accounts_subscriber(
     state: AppState,
     fut: upgrade::UpgradeFut,
 ) -> Result<(), WebSocketError> {
-    tracing::info!("Got WS connection!");
     let mut ws = fastwebsockets::FragmentCollector::new(fut.await?);
+    let mut rx = state.bank.subscribe().await;
 
     loop {
-        let frame = ws.read_frame().await?;
-        match frame.opcode {
-            OpCode::Close => break,
-            OpCode::Text | OpCode::Binary => {
-                ws.write_frame(frame).await?;
+        tokio::select! {
+            notification = rx.recv() => {
+                eprintln!("Got NEW NOTIFICATION");
+                match notification {
+                    Ok(()) => {
+                        if let Err(e) = ws
+                            .write_frame(Frame::new(
+                                true,
+                                OpCode::Text,
+                                None,
+                                fastwebsockets::Payload::Borrowed(&[]),
+                            ))
+                            .await
+                        {
+                            tracing::error!(
+                                "Failed to notify client about bank locking: {e}"
+                            );
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "Failed to receive bank lock notification: {e}"
+                        );
+                        break;
+                    }
+                }
+
             }
-            OpCode::Ping => {
-                ws.write_frame(Frame::pong(fastwebsockets::Payload::Owned(
-                    vec![],
-                )))
-                .await?
+            frame = ws.read_frame() => {
+                // Assume connection is closed
+                if frame.is_err() {
+                    break;
+                }
             }
-            _ => {}
         }
     }
 
+    tracing::info!("End to serve ws account subscriber");
     Ok(())
 }

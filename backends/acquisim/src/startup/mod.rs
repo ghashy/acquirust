@@ -4,6 +4,7 @@ use axum::routing::{self, IntoMakeService};
 use axum::serve::Serve;
 use axum::Router;
 use tokio::net::TcpListener;
+use tokio::sync::broadcast::Receiver;
 
 use crate::routes::{get_payment_html_page, trigger_payment};
 use crate::ws_tracing_subscriber::WebSocketAppender;
@@ -38,11 +39,15 @@ impl Application {
         let addr = format!("{}:{}", config.addr, port);
         let listener = TcpListener::bind(addr).await?;
 
+        // Notificator is mpsc::Receiver which is notified
+        // when there are new bank request.
+        let bank = Bank::new(
+            &config.terminal_settings.password,
+            &config.bank_username,
+        );
+
         let app_state = AppState {
-            bank: Bank::new(
-                &config.terminal_settings.password,
-                &config.bank_username,
-            ),
+            bank,
             settings: Arc::new(config),
             active_payments: ActivePayments::new(),
             ws_appender,

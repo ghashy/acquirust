@@ -12,6 +12,7 @@ pub struct Account {
     pub card_number: CardNumber,
     pub balance: i64,
     pub transactions: Vec<Transaction>,
+    pub exists: bool,
 }
 
 #[derive(Serialize)]

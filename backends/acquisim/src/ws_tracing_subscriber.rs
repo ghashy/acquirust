@@ -1,11 +1,14 @@
-use std::sync::Arc;
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use fastwebsockets::{upgrade::UpgradeFut, Frame};
 use tokio::sync::{mpsc, Mutex};
 
 #[derive(Clone)]
 pub struct WebSocketAppender {
-    subscribers: Arc<Mutex<Vec<mpsc::Sender<Vec<u8>>>>>,
+    subscribers: Arc<Mutex<HashMap<uuid::Uuid, mpsc::Sender<Vec<u8>>>>>,
     tx: tokio::sync::mpsc::Sender<Vec<u8>>,
 }
 
@@ -14,7 +17,7 @@ impl WebSocketAppender {
         let (tx, rx) = tokio::sync::mpsc::channel(100);
         (
             Self {
-                subscribers: Arc::new(Mutex::new(Vec::new())),
+                subscribers: Arc::new(Mutex::new(HashMap::new())),
                 tx,
             },
             rx,
@@ -23,7 +26,10 @@ impl WebSocketAppender {
 
     pub async fn add_subscriber(&self, fut: UpgradeFut) {
         let (tx, rx) = tokio::sync::mpsc::channel(100);
+        let id = uuid::Uuid::new_v4();
+        eprintln!("New subscriber with id: {id}");
 
+        let subscribers = self.subscribers.clone();
         // Spawn task for new web socket subscriber
         tokio::spawn(async move {
             let mut rx: mpsc::Receiver<Vec<u8>> = rx;
@@ -31,21 +37,34 @@ impl WebSocketAppender {
                 fut.await.expect("Failed to await ws future"),
             );
 
-            while let Some(log) = rx.recv().await {
-                if let Err(e) = ws
-                    .write_frame(Frame::text(fastwebsockets::Payload::Owned(
-                        log,
-                    )))
-                    .await
-                {
-                    // Don't use tracing here to avoid feedback
-                    eprintln!("Failed to send log over ws: {e}");
+            loop {
+                tokio::select! {
+                    log = rx.recv() => {
+                        if let Some(log) = log {
+                            if let Err(e) = ws.write_frame(Frame::text(fastwebsockets::Payload::Owned(log))).await {
+                                // Don't use tracing here to avoid feedback
+                                eprintln!("Failed to send log over ws: {e}");
+                                break;
+                            }
+                        }
+                    }
+                    frame = ws.read_frame() => {
+                        // Assume connection is closed
+                        if frame.is_err() {
+                            eprintln!("Connection is closed (tracing subscription)");
+                            break;
+                        }
+                    }
                 }
             }
+
+            // Remove subscriber from notificator's list
+            eprintln!("Removing id {id} from tracing subscribers list");
+            subscribers.lock().await.remove(&id);
         });
 
         // Store reference to subscriber's transmitter
-        self.subscribers.lock().await.push(tx)
+        self.subscribers.lock().await.insert(id, tx);
     }
 
     pub fn run(&self, mut rx: tokio::sync::mpsc::Receiver<Vec<u8>>) {
@@ -60,7 +79,7 @@ impl WebSocketAppender {
                     }
                 };
                 // Send traces for all subscribers over web socket
-                for sender in subscribers.lock().await.iter_mut() {
+                for (_, sender) in subscribers.lock().await.iter_mut() {
                     if let Err(e) = sender.send(value.clone()).await {
                         tracing::error!(
                         "Failed to send web socket trace over mpsc::channel: {e}"
