@@ -1,11 +1,8 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Fake bank</title>
     <style>
       * {
@@ -263,29 +260,14 @@
               />
 
               <label for="password">Пароль</label>
-              <input
-                type="text"
-                id="password"
-                placeholder="Пароль"
-                required
-              />
+              <input type="text" id="password" placeholder="Пароль" required />
             </div>
 
             <fieldset>
               <legend>Действует до</legend>
-              <input
-                type="text"
-                id="month"
-                placeholder="ММ"
-                disabled
-              />
+              <input type="text" id="month" placeholder="ММ" disabled />
               <p class="slash">/</p>
-              <input
-                type="text"
-                id="year"
-                placeholder="ГГ"
-                disabled
-              />
+              <input type="text" id="year" placeholder="ГГ" disabled />
             </fieldset>
           </div>
 
@@ -294,23 +276,14 @@
 
             <div class="ccv">
               <label for="ccv">CCV/CVC</label>
-              <input
-                type="text"
-                id="ccv"
-                placeholder="000"
-                disabled
-              />
+              <input type="text" id="ccv" placeholder="000" disabled />
             </div>
 
             <p class="ccv_prompt">три цифры с обратной стороны карты</p>
           </div>
         </div>
 
-        <button
-          type="submit"
-          id="submit_button"
-          disabled
-        >
+        <button type="submit" id="submit_button" disabled>
           Оплатить {{ price }} KittyCoin
         </button>
       </form>
@@ -375,7 +348,7 @@
               },
               body: JSON.stringify(payload),
             });
-            const data = await response.json();
+            const data = await response.text();
             console.log(data);
             window.location.replace(data);
           } catch (error) {
