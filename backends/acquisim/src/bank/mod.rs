@@ -335,9 +335,14 @@ impl Bank {
         self.lock().await.transactions.clone()
     }
 
+    pub async fn bank_emission(&self) -> i64 {
+        let guard = self.lock().await;
+        self.balance(&guard, &guard.emission_account)
+    }
+
+    /// I want to notify my subscribers to update their accounts info
+    /// after every bank lock
     fn notify(guard: &MutexGuard<'_, BankInner>) {
-        // I want to notify my subscribers to update their accounts info
-        // after every bank lock
         if let Err(e) = guard.notifier.send(()) {
             tracing::error!("Failed to send bank lock notification: {e}");
         }

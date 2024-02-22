@@ -61,6 +61,7 @@ pub fn system_router(state: AppState) -> Router {
         .route("/list_accounts", routing::get(list_accounts))
         .route("/credit", routing::post(open_credit))
         .route("/transaction", routing::post(new_transaction))
+        .route("/emission", routing::get(emission))
         .route("/list_transactions", routing::get(list_transactions))
         .route("/subscribe_on_accounts", routing::get(ws_accounts))
         .route("/subscribe_on_traces", routing::get(ws_traces))
@@ -123,6 +124,12 @@ async fn list_transactions(
     State(state): State<AppState>,
 ) -> Json<Vec<Transaction>> {
     Json(state.bank.list_transactions().await)
+}
+
+#[tracing::instrument(name = "Get bank emission", skip_all)]
+#[axum::debug_handler]
+async fn emission(State(state): State<AppState>) -> String {
+    state.bank.bank_emission().await.to_string()
 }
 
 #[tracing::instrument(name = "Register a ws accounts subscriber", skip_all)]
