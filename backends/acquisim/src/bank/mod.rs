@@ -237,6 +237,13 @@ impl Bank {
             .accounts
             .iter()
             .find(|&acc| acc.card_number.eq(card))
+            .or_else(|| {
+                if guard.store_account.card_number.eq(card) {
+                    Some(&guard.store_account)
+                } else {
+                    None
+                }
+            })
             .ok_or(BankOperationError::AccountNotFound)?;
         if !account.is_existing {
             return Err(BankOperationError::AccountIsDeleted);
