@@ -11,6 +11,7 @@ pub fn watch_and_delete_active_payment(
     tokio::spawn(async move {
         let interval =
             (created_at + time::Duration::hours(1)) - OffsetDateTime::now_utc();
+        // Sleeping
         match interval.try_into() {
             Ok(duration) => {
                 tokio::time::sleep(duration).await;
@@ -19,6 +20,7 @@ pub fn watch_and_delete_active_payment(
                 tracing::error!("Failed to calculate std::time::Duration from time::Duration: {e}")
             }
         }
+        // Removing payment
         match app_state.active_payments.remove_payment(payment_id) {
             Ok(()) => {
                 tracing::info!(
