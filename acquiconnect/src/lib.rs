@@ -24,6 +24,44 @@ pub(crate) fn error_chain_fmt(
     Ok(())
 }
 
+/// This trait allows to generalize api actions behaviour, it assumes that
+/// every action has:
+/// `Request` type - some data as input
+/// `Response` type - some data as output
+/// And, using that model, we can define any entire backend in similar way:
+/// ```rust
+/// // Define action struct
+/// pub struct SayHello;
+/// // Define request and response types
+/// pub struct SimpleRequest(pub String);
+/// #[derive(Deserialize)]
+/// pub struct SimpleResponse(pub String);
+///
+/// // Implement `ApiAction` for action struct
+/// impl ApiAction for SayHello {
+///     type Request = SimpleRequest;
+///     type Response = SimpleResponse;
+///     fn url_path(&self) -> &'static str {
+///         "SayHello"
+///     }
+///     async fn perform_action(
+///         req: Self::Request,
+///         _addr: Url,
+///         _client: &reqwest::Client,
+///     ) -> Result<Self::Response, ClientError> {
+///         let name = req.0;
+///         Ok(SimpleResponse(format!("Hello, {name}!")))
+///     }
+/// }
+/// ```
+/// Now we can use that action:
+/// ```rust
+/// let client = AcquiClient::new("https://happydog.org").unwrap();
+/// let response = client
+///     .execute(SayHello, SimpleRequest("Dog".to_string()))
+///     .await
+///     .unwrap();
+/// ```
 pub trait ApiAction {
     type Request;
     type Response;
