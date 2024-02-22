@@ -24,7 +24,7 @@ pub struct Credentials {
 }
 
 #[tracing::instrument(name = "Get payment html page", skip_all)]
-pub async fn get_payment_html_page(
+pub async fn payment_html_page(
     State(state): State<AppState>,
     Path(payment_id): Path<Uuid>,
 ) -> Result<Html<String>, StatusCode> {

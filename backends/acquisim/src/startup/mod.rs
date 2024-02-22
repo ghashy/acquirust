@@ -6,7 +6,7 @@ use axum::Router;
 use tokio::net::TcpListener;
 use tokio::sync::broadcast::Receiver;
 
-use crate::routes::{get_payment_html_page, trigger_payment};
+use crate::routes::{payment_html_page, trigger_payment};
 use crate::ws_tracing_subscriber::WebSocketAppender;
 use crate::{
     active_payment::ActivePayments,
@@ -54,7 +54,7 @@ impl Application {
         };
 
         let app = Router::new()
-            .route("/payment_page/:id", routing::get(get_payment_html_page))
+            .route("/payment_page/:id", routing::get(payment_html_page))
             .route("/payment/:id", routing::post(trigger_payment))
             .with_state(app_state.clone())
             .nest("/api", api_router(app_state.clone()))
