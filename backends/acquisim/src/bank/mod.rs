@@ -45,6 +45,8 @@ pub enum BankOperationError {
     BadTransaction,
     #[error("Mutex lock error: {0}")]
     MutexLockError(#[from] TryLockError),
+    #[error("Attempt to perform not allowed operation: {0}")]
+    BadOperation(String),
 }
 
 impl std::fmt::Debug for BankOperationError {
@@ -176,7 +178,15 @@ impl Bank {
                 acc.is_existing = false;
                 Ok(())
             }
-            None => Err(BankOperationError::AccountNotFound),
+            None => {
+                if guard.store_account.card_number.eq(&card) {
+                    Err(BankOperationError::BadOperation(
+                        "Can't delete store account".to_string(),
+                    ))
+                } else {
+                    Err(BankOperationError::AccountNotFound)
+                }
+            }
         };
 
         Self::notify(&guard);
