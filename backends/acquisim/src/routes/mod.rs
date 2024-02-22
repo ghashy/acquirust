@@ -28,6 +28,7 @@ pub async fn payment_html_page(
     State(state): State<AppState>,
     Path(payment_id): Path<Uuid>,
 ) -> Result<Html<String>, StatusCode> {
+    // Try to create submit payment url for client (browser)
     let submit_payment_url = match format!(
         "http://{}:{}/payment/{}",
         state.settings.addr, state.settings.port, payment_id
@@ -41,6 +42,7 @@ pub async fn payment_html_page(
         }
     };
 
+    // Try to return html payment page
     match state.active_payments.try_acquire_payment(payment_id) {
         Ok(p) => match SubmitPaymentPage::new(
             p.request.amount,
