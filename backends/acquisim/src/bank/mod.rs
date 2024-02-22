@@ -261,6 +261,12 @@ impl Bank {
         balance
     }
 
+    pub async fn store_balance(&self) -> i64 {
+        let guard = self.lock().await;
+        let store_acc = &guard.store_account;
+        self.balance(&guard, store_acc)
+    }
+
     fn account_transactions(
         &self,
         guard: &MutexGuard<'_, BankInner>,
