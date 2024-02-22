@@ -62,6 +62,8 @@ pub fn system_router(state: AppState) -> Router {
         .route("/credit", routing::post(open_credit))
         .route("/transaction", routing::post(new_transaction))
         .route("/emission", routing::get(emission))
+        .route("/store_card", routing::get(store_card))
+        .route("/store_balance", routing::get(store_balance))
         .route("/list_transactions", routing::get(list_transactions))
         .route("/subscribe_on_accounts", routing::get(ws_accounts))
         .route("/subscribe_on_traces", routing::get(ws_traces))
@@ -130,6 +132,24 @@ async fn list_transactions(
 #[axum::debug_handler]
 async fn emission(State(state): State<AppState>) -> String {
     state.bank.bank_emission().await.to_string()
+}
+
+#[tracing::instrument(name = "Get store balance", skip_all)]
+#[axum::debug_handler]
+async fn store_balance(State(state): State<AppState>) -> String {
+    state.bank.store_balance().await.to_string()
+}
+
+#[tracing::instrument(name = "Get store card number", skip_all)]
+#[axum::debug_handler]
+async fn store_card(State(state): State<AppState>) -> String {
+    state
+        .bank
+        .get_store_account()
+        .await
+        .card()
+        .as_ref()
+        .to_string()
 }
 
 #[tracing::instrument(name = "Register a ws accounts subscriber", skip_all)]
