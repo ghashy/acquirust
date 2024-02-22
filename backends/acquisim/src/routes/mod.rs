@@ -2,7 +2,7 @@ use askama::Template;
 use axum::{
     extract::{Path, State},
     http::StatusCode,
-    response::Html,
+    response::{Html, Redirect},
     Json,
 };
 use secrecy::Secret;
@@ -69,7 +69,7 @@ pub async fn trigger_payment(
     State(state): State<AppState>,
     Path(payment_id): Path<Uuid>,
     Json(creds): Json<Credentials>,
-) -> Result<StatusCode, StatusCode> {
+) -> Result<Redirect, StatusCode> {
     let payment = match state.active_payments.try_acquire_payment(payment_id) {
         Ok(p) => p,
         Err(e) => {
@@ -89,23 +89,19 @@ pub async fn trigger_payment(
         Err(e) => {
             // Not authorized
             tracing::error!("Can't authorize account: {e}");
-            return Err(StatusCode::UNAUTHORIZED);
+            return Ok(Redirect::to(payment.request.fail_url.as_str()));
         }
     };
 
-    // Find store account
-    let store_account = match state.bank.find_account(&payment.store_card).await
-    {
-        Ok(acc) => acc,
-        Err(e) => {
-            // Strange error
-            tracing::error!("Can't retrieve store account: {e}");
-            return Err(StatusCode::INTERNAL_SERVER_ERROR);
-        }
-    };
+    // Check store account
+    let store_account = state.bank.get_store_account().await;
+    if !store_account.card().eq(&payment.store_card) {
+        tracing::error!("Faild to perform payment: wrong store account!");
+        return Ok(Redirect::to(payment.request.fail_url.as_str()));
+    }
 
     // Perform transaction
-    match state
+    let result = match state
         .bank
         .new_transaction(&account, &store_account, payment.request.amount)
         .await
@@ -114,11 +110,19 @@ pub async fn trigger_payment(
             if let Err(e) = state.active_payments.remove_payment(payment.id()) {
                 tracing::error!("Failed to delete active payment: {e}")
             }
-            Ok(StatusCode::OK)
+            Ok(Redirect::to(payment.request.success_url.as_str()))
         }
         Err(e) => {
             tracing::error!("Transaction failed: {e}");
-            Err(StatusCode::PAYMENT_REQUIRED)
+            Ok(Redirect::to(payment.request.fail_url.as_str()))
         }
+    };
+
+    if let Err(e) = state.active_payments.remove_payment(payment.id()) {
+        tracing::error!("Failed to remove payment from active: {e}");
     }
+    // TODO: send notifications to store backend
+    // Implement it here before returning result:
+
+    result
 }
