@@ -4,10 +4,10 @@ curl -v -X POST localhost:15100/api/Init \
     --data-raw '
 
     {
-        "notification_url":"http://mydomain/location",
-        "success_url":"http://mydomain/location",
-        "fail_url":"http://mydomain/location",
+        "notification_url":"https://docker.com",
+        "success_url":"https://google.com",
+        "fail_url":"https://yandex.ru",
         "amount":123,
-        "token":"e616fcbe31ceca760750a907d8c235e50b0b107901b4a0fea7bfa05097cfb1ed"
+        "token":"10ce6ba5f35708e3c0cb1155dad97749ed92729eef3da4fd3da903a59a2e232e"
     }'
 
