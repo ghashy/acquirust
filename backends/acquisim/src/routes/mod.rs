@@ -28,7 +28,7 @@ pub async fn payment_html_page(
     State(state): State<AppState>,
     Path(payment_id): Path<Uuid>,
 ) -> Result<Html<String>, StatusCode> {
-    let post_payment_url = match format!(
+    let submit_payment_url = match format!(
         "http://{}:{}/payment/{}",
         state.settings.addr, state.settings.port, payment_id
     )
@@ -45,7 +45,7 @@ pub async fn payment_html_page(
         Ok(p) => match SubmitPaymentPage::new(
             p.request.amount,
             payment_id,
-            post_payment_url,
+            submit_payment_url,
         )
         .render()
         {

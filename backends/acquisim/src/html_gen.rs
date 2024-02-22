@@ -12,15 +12,15 @@ use uuid::Uuid;
 pub struct SubmitPaymentPage {
     price: i64,
     payment_id: Uuid,
-    post_payment_url: Url,
+    submit_payment_url: Url,
 }
 
 impl SubmitPaymentPage {
-    pub fn new(price: i64, payment_id: Uuid, post_payment_url: Url) -> Self {
+    pub fn new(price: i64, payment_id: Uuid, submit_payment_url: Url) -> Self {
         SubmitPaymentPage {
             price,
             payment_id,
-            post_payment_url,
+            submit_payment_url,
         }
     }
 }
