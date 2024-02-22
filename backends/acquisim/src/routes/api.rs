@@ -20,6 +20,7 @@ use crate::{
 /// Initial payment operation, basic of acquiring
 #[derive(Clone, Serialize, Deserialize)]
 pub struct InitPaymentRequest {
+    /// Currently unused
     pub notification_url: Url,
     pub success_url: Url,
     pub fail_url: Url,

@@ -64,12 +64,13 @@ pub async fn payment_html_page(
     }
 }
 
+/// We return `String` with redirection url.
 #[tracing::instrument(name = "Trigger payment", skip_all)]
 pub async fn trigger_payment(
     State(state): State<AppState>,
     Path(payment_id): Path<Uuid>,
     Json(creds): Json<Credentials>,
-) -> Result<Redirect, StatusCode> {
+) -> Result<String, StatusCode> {
     let payment = match state.active_payments.try_acquire_payment(payment_id) {
         Ok(p) => p,
         Err(e) => {
@@ -89,7 +90,7 @@ pub async fn trigger_payment(
         Err(e) => {
             // Not authorized
             tracing::error!("Can't authorize account: {e}");
-            return Ok(Redirect::to(payment.request.fail_url.as_str()));
+            return Ok(payment.request.fail_url.to_string());
         }
     };
 
@@ -97,7 +98,7 @@ pub async fn trigger_payment(
     let store_account = state.bank.get_store_account().await;
     if !store_account.card().eq(&payment.store_card) {
         tracing::error!("Faild to perform payment: wrong store account!");
-        return Ok(Redirect::to(payment.request.fail_url.as_str()));
+        return Ok(payment.request.fail_url.to_string());
     }
 
     // Perform transaction
@@ -110,19 +111,17 @@ pub async fn trigger_payment(
             if let Err(e) = state.active_payments.remove_payment(payment.id()) {
                 tracing::error!("Failed to delete active payment: {e}")
             }
-            Ok(Redirect::to(payment.request.success_url.as_str()))
+            Ok(payment.request.success_url.to_string())
         }
         Err(e) => {
             tracing::error!("Transaction failed: {e}");
-            Ok(Redirect::to(payment.request.fail_url.as_str()))
+            Ok(payment.request.fail_url.to_string())
         }
     };
 
     if let Err(e) = state.active_payments.remove_payment(payment.id()) {
         tracing::error!("Failed to remove payment from active: {e}");
     }
-    // TODO: send notifications to store backend
-    // Implement it here before returning result:
 
     result
 }
