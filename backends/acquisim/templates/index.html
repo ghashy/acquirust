@@ -376,8 +376,8 @@
               body: JSON.stringify(payload),
             });
             const data = await response.json();
-            // console.log(data);
-            window.location.replace(response);
+            console.log(data);
+            window.location.replace(data);
           } catch (error) {
             const error_overlay = document.getElementById("error_overlay");
             error_overlay.style.display = "flex";
