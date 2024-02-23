@@ -1,4 +1,4 @@
-# Acquirust
+# acquirust
 
 Acquirust is a Rust library for interacting with acquiring services. It currently consists of 4 crates:
 
@@ -7,7 +7,7 @@ Acquirust is a Rust library for interacting with acquiring services. It currentl
 - `acquisim-api`: Bindings for acquisim.
 - `mapi`: Bindings for the [Merchant API](https://www.tinkoff.ru/kassa/dev/payments/#section/Vvedenie).
 
-Additionally, there is [acqui](https://github.com/ghashy/acqui), written in Swift for macOS, which serves as an Acquisim management client.
+Additionally, there is [acqui](https://github.com/ghashy/acqui), written in Swift for macOS, which serves as an acquisim management client.
 
 The primary purpose of acquisim is for mocking and running backends that need to process payments in a test environment.
 
