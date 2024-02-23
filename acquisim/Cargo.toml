@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 acquisim-api = { path = "../backends/acquisim-api"}
+
 # Web-related dependencies
 axum = { version = "0.7.4", features = ["macros", "tracing"] }
 tower = { version = "0.4.13", features = ["timeout"] }
