@@ -1,12 +1,10 @@
 use std::sync::{Arc, Mutex};
 
+use acquisim_api::init_payment::InitPaymentRequest;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::{
-    domain::card_number::CardNumber, error_chain_fmt,
-    routes::api::InitPaymentRequest,
-};
+use crate::{domain::card_number::CardNumber, error_chain_fmt};
 
 #[derive(thiserror::Error)]
 pub enum ActivePaymentsError {

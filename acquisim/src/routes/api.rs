@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 
+use acquisim_api::init_payment::{InitPaymentRequest, InitPaymentResponse};
 use axum::{
     extract::State, http::StatusCode, response::IntoResponse, routing, Json,
     Router,
@@ -14,43 +15,6 @@ use crate::{
     active_payment::ActivePaymentsError, bank::BankOperationError,
     error_chain_fmt, startup::AppState, tasks::watch_and_delete_active_payment,
 };
-
-// ───── Request Types ────────────────────────────────────────────────────── //
-
-/// Initial payment operation, basic of acquiring
-#[derive(Clone, Serialize, Deserialize)]
-pub struct InitPaymentRequest {
-    /// Currently unused
-    pub notification_url: Url,
-    pub success_url: Url,
-    pub fail_url: Url,
-    pub amount: i64,
-    token: String,
-}
-
-impl InitPaymentRequest {
-    pub fn generate_token(&self, cashbox_password: &Secret<String>) -> String {
-        let mut token_map = BTreeMap::new();
-        token_map.insert("notification_url", self.notification_url.to_string());
-        token_map.insert("success_url", self.success_url.to_string());
-        token_map.insert("fail_url", self.fail_url.to_string());
-        token_map.insert("amount", self.amount.to_string());
-        token_map.insert("password", cashbox_password.expose_secret().clone());
-
-        let concatenated: String = token_map.into_values().collect();
-        let mut hasher: Sha256 = Digest::new();
-        hasher.update(concatenated);
-        let hash_result = hasher.finalize();
-
-        // Convert hash result to a hex string
-        format!("{:x}", hash_result)
-    }
-}
-
-#[derive(Serialize)]
-pub struct InitPaymentResponse {
-    payment_url: url::Url,
-}
 
 // ───── Types ────────────────────────────────────────────────────────────── //
 
@@ -113,12 +77,13 @@ pub fn api_router(state: AppState) -> Router {
 async fn init_payment(
     State(state): State<AppState>,
     Json(req): Json<InitPaymentRequest>,
-) -> Result<Json<InitPaymentResponse>, ApiError> {
+) -> Json<InitPaymentResponse> {
     // Authorize request
     let token = req.generate_token(&state.settings.terminal_settings.password);
 
-    if !token.eq(&req.token) {
-        return Err(ApiError::UnauthorizedError);
+    if !token.eq(req.token()) {
+        tracing::warn!("Unauthorized Init request");
+        return Json(InitPaymentResponse::err());
     }
 
     // We have only one store account in our virtual bank
@@ -126,7 +91,13 @@ async fn init_payment(
 
     // We store active payments in the RAM for simplicity
     let (active_payment_id, created_at) =
-        state.active_payments.create_payment(req, store_card)?;
+        match state.active_payments.create_payment(req, store_card) {
+            Ok(result) => result,
+            Err(e) => {
+                tracing::error!("Failed to create payment: {e}");
+                return Json(InitPaymentResponse::err());
+            }
+        };
 
     // Launch async task which will track our payment
     watch_and_delete_active_payment(
@@ -140,7 +111,16 @@ async fn init_payment(
         state.settings.addr, state.settings.port, active_payment_id
     );
 
-    let payment_url = url::Url::parse(&url)?;
+    let payment_url = match url::Url::parse(&url) {
+        Ok(url) => url,
+        Err(e) => {
+            tracing::error!("Failed to parse url: {e}");
+            return Json(InitPaymentResponse::err());
+        }
+    };
 
-    Ok(Json(InitPaymentResponse { payment_url }))
+    Json(InitPaymentResponse {
+        payment_url: Some(payment_url),
+        operation_status: acquisim_api::init_payment::OperationStatus::Success,
+    })
 }
