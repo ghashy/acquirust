@@ -1,4 +1,4 @@
-# Acquisim
+# acquisim
 
 This is a bank simulator that stores its data on the RAM.
 There is also [acqui](https://github.com/ghashy/acqui), written in Swift for macOS, which serves as an Acquisim management client.
