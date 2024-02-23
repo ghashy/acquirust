@@ -17,21 +17,21 @@ This library is being developed concurrently with [harmonysphere](https://harmon
 
 Currently supported:
 
-[x] - Standard non-PCI-DSS, non-recurrent, one-stage payment without 3DS checking.
+- [x] Standard non-PCI-DSS, non-recurrent, one-stage payment without 3DS checking.
 
 Planned:
 
-[ ] - Recurrent payments
-[ ] - Two-stage payments
-[ ] - Notifications
+- [ ] Recurrent payments
+- [ ] Two-stage payments
+- [ ] Notifications
 
 Methods:
 
-[ ] - Get payment status method
-[ ] - Get order status method
-[ ] - Get operation info method
+- [ ] Get payment status method
+- [ ] Get order status method
+- [ ] Get operation info method
 
 PCI-DSS authorized methods:
 
-[ ] - Check 3DS method
-[ ] - Finish authorize method
+- [ ] Check 3DS method
+- [ ] Finish authorize method
