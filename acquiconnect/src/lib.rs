@@ -1,9 +1,9 @@
 use std::future::Future;
 
 use reqwest::IntoUrl;
+use url::Url;
 
 pub use reqwest::Client;
-pub use url::Url;
 
 #[derive(thiserror::Error)]
 pub enum ClientError {
