@@ -1,20 +1,21 @@
-# acquisim
+# Acquisim
 
-This is a bank simulator, which stores it's data on the RAM.
-There are also [acqui](https://github.com/ghashy/acqui), written in Swift for macOS, which serves as an acquisim management client.
+This is a bank simulator that stores its data on the RAM.
+There is also [acqui](https://github.com/ghashy/acqui), written in Swift for macOS, which serves as an Acquisim management client.
 
-Currently, `acquisim` supports single-store account.
+> [!IMPORTANT]
+> Currently, `acquisim` supports a single-store account.
 
-Acquisim was designed to be simple. It is able to creating/deleting accounts, opening credits, creating transactions, tracking balances, bank emission. With simple internal design, it purposed to offer real-life api interaction, just like in real acquiring services.
+Acquisim was designed to be simple. It can create/delete accounts, open credits, create transactions, track balances, bank emission. With a simple internal design, it aims to offer real-life API interaction, just like in real acquiring services.
 
 ## Usage:
 
-Build docker container yourself in this directory, or use pre-built image from docker hub:
+You can either build the Docker container yourself in this directory or use a pre-built image from Docker Hub:
 ```bash
 docker pull ghashy/acquisim
 ```
 
-You need to pass configuration file and secret file as secrets. For example, using docker-compose:
+You need to pass a configuration file and a secret file as secrets. For example, using docker-compose:
 ```yaml
 services:
   acquisim:
@@ -34,4 +35,4 @@ secrets:
     file: secrets/terminal_password.txt
 ```
 
-After running, use [acqui](https://github.com/ghashy/acqui) for bank management, and aquisim-api for store-bank interaction.
+After running, use [acqui](https://github.com/ghashy/acqui) for bank management and [acquisim-api](https://github.com/ghashy/acquirust/tree/main/backends/acquisim-api) for store-bank interaction.
