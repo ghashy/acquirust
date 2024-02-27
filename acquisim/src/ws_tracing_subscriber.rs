@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use fastwebsockets::{upgrade::UpgradeFut, Frame};
 use tokio::sync::{mpsc, Mutex};
@@ -9,12 +6,12 @@ use tokio::sync::{mpsc, Mutex};
 #[derive(Clone)]
 pub struct WebSocketAppender {
     subscribers: Arc<Mutex<HashMap<uuid::Uuid, mpsc::Sender<Vec<u8>>>>>,
-    tx: tokio::sync::mpsc::Sender<Vec<u8>>,
+    tx: mpsc::Sender<Vec<u8>>,
 }
 
 impl WebSocketAppender {
-    pub fn new() -> (Self, tokio::sync::mpsc::Receiver<Vec<u8>>) {
-        let (tx, rx) = tokio::sync::mpsc::channel(100);
+    pub fn new() -> (Self, mpsc::Receiver<Vec<u8>>) {
+        let (tx, rx) = mpsc::channel(100);
         (
             Self {
                 subscribers: Arc::new(Mutex::new(HashMap::new())),
@@ -25,7 +22,7 @@ impl WebSocketAppender {
     }
 
     pub async fn add_subscriber(&self, fut: UpgradeFut) {
-        let (tx, rx) = tokio::sync::mpsc::channel(100);
+        let (tx, rx) = mpsc::channel(100);
         let id = uuid::Uuid::new_v4();
         eprintln!("New subscriber with id: {id}");
 
@@ -67,7 +64,7 @@ impl WebSocketAppender {
         self.subscribers.lock().await.insert(id, tx);
     }
 
-    pub fn run(&self, mut rx: tokio::sync::mpsc::Receiver<Vec<u8>>) {
+    pub fn run(&self, mut rx: mpsc::Receiver<Vec<u8>>) {
         let subscribers = self.subscribers.clone();
         tokio::spawn(async move {
             loop {
