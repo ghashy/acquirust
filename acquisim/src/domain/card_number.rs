@@ -53,19 +53,19 @@ struct CardNumberVisitor;
 
 impl<'de> Visitor<'de> for CardNumberVisitor {
     type Value = CardNumber;
+    fn expecting(
+        &self,
+        formatter: &mut std::fmt::Formatter,
+    ) -> std::fmt::Result {
+        write!(formatter, "a valid card number, 16 digits")
+    }
+
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
     where
         E: serde::de::Error,
     {
         v.parse::<CardNumber>()
             .map_err(|e| serde::de::Error::custom(e))
-    }
-
-    fn expecting(
-        &self,
-        formatter: &mut std::fmt::Formatter,
-    ) -> std::fmt::Result {
-        write!(formatter, "a valid card number, 16 digits")
     }
 }
 
