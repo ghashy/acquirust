@@ -14,6 +14,13 @@ tokio = { version = "1.36.0", features = [
   "rt-multi-thread",
   "signal",
 ] }
+reqwest = { version = "0.11.23", default-features = false, features = [
+  "json",
+  # "rustls-tls",
+  # "multipart",
+  # "cookies",
+] }
+
 fastwebsockets = { version = "0.7.0", features = ["upgrade", "with_axum"] }
 
 # Serialization-related dependencies
