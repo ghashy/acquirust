@@ -47,7 +47,7 @@ mod tests {
     use fake::Fake;
 
     #[test]
-    fn valied_emails_are_parsed_successfully() {
+    fn valid_emails_are_parsed_successfully() {
         let mut rng = rand::thread_rng();
         for _ in 0..100 {
             let valid_email: String = SafeEmail().fake_with_rng(&mut rng);
