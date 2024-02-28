@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use serde::Serialize;
 
 use crate::{bank::Transaction, domain::card_number::CardNumber};
@@ -18,4 +19,9 @@ pub struct Account {
 #[derive(Serialize)]
 pub struct ListAccountsResponse {
     pub accounts: Vec<Account>,
+}
+
+#[derive(Serialize)]
+pub struct ListCardTokensResponse {
+    pub list: HashMap<String, CardNumber>
 }

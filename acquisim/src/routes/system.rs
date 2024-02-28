@@ -16,7 +16,7 @@ use crate::domain::requests::system_api::AddAccountRequest;
 use crate::domain::requests::system_api::DeleteAccountRequest;
 use crate::domain::requests::system_api::NewTransactionRequest;
 use crate::domain::requests::system_api::OpenCreditRequest;
-use crate::domain::responses::system_api::AddAccountResponse;
+use crate::domain::responses::system_api::{AddAccountResponse, ListCardTokensResponse};
 use crate::domain::responses::system_api::ListAccountsResponse;
 use crate::error_chain_fmt;
 use crate::middleware::BasicAuthLayer;
@@ -59,6 +59,7 @@ pub fn system_router(state: AppState) -> Router {
         .route("/account", routing::post(add_account))
         .route("/account", routing::delete(delete_account))
         .route("/list_accounts", routing::get(list_accounts))
+        .route("/list_card_tokens", routing::get(list_card_tokens))
         .route("/credit", routing::post(open_credit))
         .route("/transaction", routing::post(new_transaction))
         .route("/emission", routing::get(emission))
@@ -95,6 +96,14 @@ async fn list_accounts(
 ) -> Result<Json<ListAccountsResponse>, SystemApiError> {
     let accounts = state.bank.list_accounts().await;
     Ok(Json(ListAccountsResponse { accounts }))
+}
+
+#[tracing::instrument(name = "List card tokens", skip_all)]
+async fn list_card_tokens(
+    State(state): State<AppState>,
+) -> Result<Json<ListCardTokensResponse>, SystemApiError> {
+    let list = state.bank.list_card_tokens().await;
+    Ok(Json(ListCardTokensResponse{ list }))
 }
 
 #[tracing::instrument(name = "Open credit for account", skip_all)]

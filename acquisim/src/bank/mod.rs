@@ -209,6 +209,10 @@ impl Bank {
         accounts
     }
 
+    pub async fn list_card_tokens(&self) -> HashMap<String, CardNumber> {
+        self.lock().await.tokens.clone()
+    }
+
     pub async fn authorize_account(
         &self,
         card: &CardNumber,
