@@ -81,7 +81,6 @@ async fn add_account(
 }
 
 #[tracing::instrument(name = "Delete existing account", skip_all)]
-#[axum::debug_handler]
 async fn delete_account(
     State(state): State<AppState>,
     Json(req): Json<DeleteAccountRequest>,
