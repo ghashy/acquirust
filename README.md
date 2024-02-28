@@ -18,6 +18,7 @@ This library is being developed concurrently with [harmonysphere](https://harmon
 ### Currently supported:
 
 - [x] Standard non-PCI-DSS, non-recurrent, one-stage payment without 3DS checking.
+- [x] Card token registration for card-related operations without PCI-DSS.
 
 ### Planned:
 
