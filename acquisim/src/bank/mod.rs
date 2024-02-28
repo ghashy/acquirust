@@ -196,14 +196,21 @@ impl Bank {
     pub async fn list_accounts(
         &self,
     ) -> Vec<crate::domain::responses::system_api::Account> {
-        let lock = self.lock().await;
+        let guard = self.lock().await;
         let mut accounts = Vec::new();
-        for acc in lock.accounts.iter() {
+        for acc in guard.accounts.iter() {
+            let tokens = guard
+                .tokens
+                .iter()
+                .filter(|(_, &ref card)| card.eq(&acc.card_number))
+                .map(|(&ref token, _)| token.clone())
+                .collect();
             accounts.push(crate::domain::responses::system_api::Account {
                 card_number: acc.card_number.clone(),
-                balance: self.balance(&lock, acc),
-                transactions: self.account_transactions(&lock, acc),
+                balance: self.balance(&guard, acc),
+                transactions: self.account_transactions(&guard, acc),
                 exists: acc.is_existing,
+                tokens,
             })
         }
         accounts
@@ -335,6 +342,8 @@ impl Bank {
         let _ = self.find_account(&card).await?;
         let token = generate_token();
         let mut guard = self.lock().await;
+
+        Self::notify(&guard);
         guard.tokens.insert(token.clone(), card);
         Ok(token)
     }
@@ -387,7 +396,6 @@ impl Bank {
     async fn lock(&self) -> MutexGuard<BankInner> {
         self.0.lock().await
     }
-
 }
 
 fn generate_token() -> String {

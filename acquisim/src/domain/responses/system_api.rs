@@ -14,6 +14,7 @@ pub struct Account {
     pub balance: i64,
     pub transactions: Vec<Transaction>,
     pub exists: bool,
+    pub tokens: Vec<String>
 }
 
 #[derive(Serialize)]
