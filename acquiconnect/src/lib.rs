@@ -3,6 +3,7 @@ use std::future::Future;
 use reqwest::IntoUrl;
 use url::Url;
 
+pub use reqwest::StatusCode;
 pub use reqwest::Client;
 
 #[derive(thiserror::Error)]
@@ -32,6 +33,12 @@ pub(crate) fn error_chain_fmt(
 /// `Response` type - some data as output
 /// And, using that model, we can define any entire backend in similar way:
 /// ```rust
+/// use serde::Deserialize;
+/// use url::Url;
+/// use acquiconnect::AcquiClient;
+/// use acquiconnect::ClientError;
+/// use acquiconnect::ApiAction;
+///
 /// // Define action struct
 /// pub struct SayHello;
 /// // Define request and response types
@@ -55,14 +62,15 @@ pub(crate) fn error_chain_fmt(
 ///         Ok(SimpleResponse(format!("Hello, {name}!")))
 ///     }
 /// }
-/// ```
-/// Now we can use that action:
-/// ```rust
+///
+/// // Now we can use that action:
+/// async fn run() {
 /// let client = AcquiClient::new("https://happydog.org").unwrap();
 /// let response = client
 ///     .execute(SayHello, SimpleRequest("Dog".to_string()))
 ///     .await
 ///     .unwrap();
+/// }
 /// ```
 pub trait ApiAction {
     type Request;
@@ -71,7 +79,7 @@ pub trait ApiAction {
     fn perform_action(
         req: Self::Request,
         addr: Url,
-        client: &reqwest::Client,
+        client: &Client,
     ) -> impl Future<Output = Result<Self::Response, ClientError>> + Send;
 }
 
@@ -83,14 +91,14 @@ impl std::fmt::Debug for ClientError {
 
 #[derive(Clone, Debug)]
 pub struct AcquiClient {
-    client: reqwest::Client,
+    client: Client,
     address: Url,
 }
 
 impl AcquiClient {
     pub fn new(url: impl IntoUrl) -> Result<Self, ClientError> {
         Ok(AcquiClient {
-            client: reqwest::Client::new(),
+            client: Client::new(),
             address: url.into_url()?,
         })
     }
