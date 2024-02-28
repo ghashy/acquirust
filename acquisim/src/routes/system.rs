@@ -137,19 +137,16 @@ async fn list_transactions(
 }
 
 #[tracing::instrument(name = "Get bank emission", skip_all)]
-#[axum::debug_handler]
 async fn emission(State(state): State<AppState>) -> String {
     state.bank.bank_emission().await.to_string()
 }
 
 #[tracing::instrument(name = "Get store balance", skip_all)]
-#[axum::debug_handler]
 async fn store_balance(State(state): State<AppState>) -> String {
     state.bank.store_balance().await.to_string()
 }
 
 #[tracing::instrument(name = "Get store card number", skip_all)]
-#[axum::debug_handler]
 async fn store_card(State(state): State<AppState>) -> String {
     state
         .bank
