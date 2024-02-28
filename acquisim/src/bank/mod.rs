@@ -1,3 +1,5 @@
+use rand::{distributions::Alphanumeric, Rng};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use secrecy::{ExposeSecret, Secret};
@@ -85,13 +87,14 @@ impl PartialEq for Account {
 }
 
 struct BankInner {
+    tokens: HashMap<String, CardNumber>,
     accounts: Vec<Account>,
     transactions: Vec<Transaction>,
     emission_account: Account,
     store_account: Account,
     bank_username: String,
     notifier: Sender<()>,
-    subscriber: Receiver<()>,
+    _subscriber: Receiver<()>,
 }
 
 impl Bank {
@@ -120,13 +123,14 @@ impl Bank {
         };
 
         let bank = BankInner {
+            tokens: HashMap::new(),
             accounts: Vec::new(),
             emission_account,
             store_account,
             transactions: Vec::new(),
             bank_username: bank_username.to_string(),
             notifier: tx,
-            subscriber: rx,
+            _subscriber: rx,
         };
         Bank(Arc::new(Mutex::new(bank)))
     }
