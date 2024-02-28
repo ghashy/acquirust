@@ -36,7 +36,7 @@ pub fn html_pages_and_triggers_router() -> Router<AppState> {
         // Card token trigger
         .route(
             "/card_token/:id",
-            routing::get(trigger_card_token_registration),
+            routing::post(trigger_card_token_registration),
         )
 }
 
@@ -153,7 +153,7 @@ pub async fn card_token_registration_html_page(
     Path(id): Path<Uuid>,
 ) -> Result<Html<String>, StatusCode> {
     // Try to create submit payment url for client (browser)
-    let submit_payment_url = match format!(
+    let submit_card_url = match format!(
         "http://{}:{}/card_token/{}",
         state.settings.addr, state.settings.port, id
     )
@@ -170,7 +170,7 @@ pub async fn card_token_registration_html_page(
     match state.interaction_sessions.try_acquire_session_by_id(id) {
         Ok(session) => {
             let _ = session.session_type.register_card_token_req();
-            match SubmitCardNumberPage::new(submit_payment_url).render() {
+            match SubmitCardNumberPage::new(submit_card_url).render() {
                 Ok(body) => Ok(Html(body)),
                 Err(e) => {
                     tracing::error!("Failed to render payment html page: {e}");
@@ -190,7 +190,7 @@ pub async fn card_token_registration_html_page(
 pub async fn trigger_card_token_registration(
     State(state): State<AppState>,
     Path(id): Path<Uuid>,
-    card_number: String,
+    body: String,
 ) -> Result<String, StatusCode> {
     let session = match state.interaction_sessions.try_acquire_session_by_id(id)
     {
@@ -205,11 +205,8 @@ pub async fn trigger_card_token_registration(
     let req = session.session_type.register_card_token_req();
 
     // Authorize card and password
-    let Ok(card) = CardNumber::parse(&card_number) else {
-        tracing::error!(
-            "Bad request, can't parse card number: {}",
-            card_number
-        );
+    let Ok(card) = CardNumber::parse(&body) else {
+        tracing::error!("Bad request, can't parse card number: {}", body);
         return Ok(req.fail_url.to_string());
     };
 
@@ -236,5 +233,6 @@ pub async fn trigger_card_token_registration(
         .notify_and_remove(session.id(), &notification)
         .await;
 
+    println!("Return url: {}", req.success_url.to_string());
     Ok(req.success_url.to_string())
 }
