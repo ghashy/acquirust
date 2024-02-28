@@ -37,7 +37,6 @@
         position: fixed;
         top: 0;
         left: 0;
-        display: flex;
         justify-content: center;
         align-items: center;
         width: 100vw;
@@ -322,14 +321,12 @@
         const regex = /^[0-9]+$/;
         if (event.target.value.length <= 1) {
           if (!regex.test(event.target.value)) {
-            event.target.value = event.target.value.replace(/[^\d]/g, "");
+            event.target.value = event.target.value.replace(/\D/g, "");
             return;
           }
         }
-        let card_number = event.target.value.replace(/[^\d]/g, "");
-        let formatted_card_number = card_number.match(/.{1,4}/g).join(" ");
-
-        event.target.value = formatted_card_number;
+        let card_number = event.target.value.replace(/\D/g, "");
+        event.target.value = card_number.match(/.{1,4}/g).join(" ");
 
         if (card_number.length === 16) {
           document.getElementById("password").focus();
@@ -375,7 +372,7 @@
               },
               body: JSON.stringify(payload),
             });
-            const data = await response.json();
+            const data = await response.text();
             console.log(data);
             window.location.replace(data);
           } catch (error) {

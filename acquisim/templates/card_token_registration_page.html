@@ -37,7 +37,6 @@
         position: fixed;
         top: 0;
         left: 0;
-        display: flex;
         justify-content: center;
         align-items: center;
         width: 100vw;
@@ -96,11 +95,6 @@
         border-radius: 0.25rem;
         background-color: var(--text_white);
         box-shadow: 0 0 0.5rem 0.125rem rgba(0, 0, 0, 0.11);
-      }
-
-      .number_and_password {
-        display: flex;
-        flex-direction: column;
       }
 
       label,
@@ -211,14 +205,12 @@
         const regex = /^[0-9]+$/;
         if (event.target.value.length <= 1) {
           if (!regex.test(event.target.value)) {
-            event.target.value = event.target.value.replace(/[^\d]/g, "");
+            event.target.value = event.target.value.replace(/\D/g, "");
             return;
           }
         }
-        let card_number = event.target.value.replace(/[^\d]/g, "");
-        let formatted_card_number = card_number.match(/.{1,4}/g).join(" ");
-
-        event.target.value = formatted_card_number;
+        let card_number = event.target.value.replace(/\D/g, "");
+        event.target.value = card_number.match(/.{1,4}/g).join(" ");
       };
 
       // Enable submit button
@@ -229,7 +221,7 @@
         if (card_input.value) {
           submit_button.removeAttribute("disabled");
         } else {
-          submit_button.setAttribute("disabled", true);
+          submit_button.setAttribute("disabled", "true");
         }
       };
 
@@ -243,20 +235,16 @@
 
         const formatted_card_number = card_number.replace(/\s/g, "");
 
-        const payload = {
-          card_number: formatted_card_number,
-        };
-
         const post_data = async () => {
           try {
             const response = await fetch("{{ submit_card_number_url }}", {
               method: "POST",
               headers: {
-                "Content-Type": "application/json",
+                "Content-Type": "text/plain",
               },
-              body: JSON.stringify(payload),
+              body: formatted_card_number,
             });
-            const data = await response.json();
+            const data = await response.text();
             console.log(data);
             window.location.replace(data);
           } catch (error) {
