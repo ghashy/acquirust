@@ -6,7 +6,33 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use url::Url;
 
+use crate::{Operation, OperationStatus, Tokenizable};
+
+// ───── Api Action ───────────────────────────────────────────────────────── //
+
 pub struct InitPayment;
+
+impl ApiAction for InitPayment {
+    type Request = InitPaymentRequest;
+    type Response = InitPaymentResponse;
+
+    fn url_path(&self) -> &'static str {
+        "/api/InitPayment"
+    }
+
+    async fn perform_action(
+        req: Self::Request,
+        addr: Url,
+        client: &Client,
+    ) -> Result<Self::Response, ClientError> {
+        match client.post(addr).json(&req).send().await {
+            Ok(response) => Ok(response.json().await?),
+            Err(e) => Err(e)?,
+        }
+    }
+}
+
+// ───── Request Type ─────────────────────────────────────────────────────── //
 
 /// Initial payment operation, basic of acquiring
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -38,10 +64,6 @@ impl InitPaymentRequest {
         req
     }
 
-    pub fn token(&self) -> &str {
-        &self.token
-    }
-
     pub fn generate_token(&self, cashbox_password: &Secret<String>) -> String {
         let mut token_map = BTreeMap::new();
         token_map.insert("notification_url", self.notification_url.to_string());
@@ -60,44 +82,62 @@ impl InitPaymentRequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum OperationStatus {
-    Success,
-    Fail,
+impl Tokenizable for InitPaymentRequest {
+    fn generate_token(&self, password: &Secret<String>) -> String {
+        self.generate_token(password)
+    }
+    fn token(&self) -> &str {
+        &self.token
+    }
 }
+
+// ───── Response Type ────────────────────────────────────────────────────── //
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InitPaymentResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub payment_url: Option<url::Url>,
-    pub operation_status: OperationStatus,
+    pub payment_url: Option<Url>,
 }
 
 impl InitPaymentResponse {
     pub fn err() -> Self {
+        InitPaymentResponse { payment_url: None }
+    }
+
+    pub fn success(payment_url: Url) -> Self {
         InitPaymentResponse {
-            payment_url: None,
-            operation_status: OperationStatus::Fail,
+            payment_url: Some(payment_url),
         }
     }
 }
 
-impl ApiAction for InitPayment {
-    type Request = InitPaymentRequest;
-    type Response = InitPaymentResponse;
-
-    fn url_path(&self) -> &'static str {
-        "/api/Init"
+impl Operation for InitPaymentResponse {
+    fn operation_error() -> InitPaymentResponse {
+        Self::err()
     }
 
-    async fn perform_action(
-        req: Self::Request,
-        addr: Url,
-        client: &Client,
-    ) -> Result<Self::Response, ClientError> {
-        match client.post(addr).json(&req).send().await {
-            Ok(response) => Ok(response.json().await?),
-            Err(e) => Err(e)?,
+    fn operation_success(session_ui_url: Url) -> InitPaymentResponse {
+        InitPaymentResponse::success(session_ui_url)
+    }
+}
+
+// ───── Notification Type ────────────────────────────────────────────────── //
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct PaymentOperationNotification {
+    pub operation_status: OperationStatus,
+}
+
+impl PaymentOperationNotification {
+    pub fn err() -> Self {
+        PaymentOperationNotification {
+            operation_status: OperationStatus::Fail,
+        }
+    }
+
+    pub fn success() -> Self {
+        PaymentOperationNotification {
+            operation_status: OperationStatus::Success,
         }
     }
 }

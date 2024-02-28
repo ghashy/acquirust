@@ -370,6 +370,25 @@ impl Bank {
             tracing::error!("Failed to send bank lock notification: {e}");
         }
     }
+
+    pub async fn new_card_token(
+        &self,
+        card: CardNumber,
+    ) -> Result<String, BankOperationError> {
+        let _ = self.find_account(&card).await?;
+        let token = generate_token();
+        let mut guard = self.lock().await;
+        guard.tokens.insert(token.clone(), card);
+        Ok(token)
+    }
+}
+
+fn generate_token() -> String {
+    rand::thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(30)
+        .map(char::from)
+        .collect()
 }
 
 #[cfg(test)]

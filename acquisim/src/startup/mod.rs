@@ -1,15 +1,14 @@
 use std::sync::Arc;
 
-use axum::routing::{self, IntoMakeService};
+use axum::routing::IntoMakeService;
 use axum::serve::Serve;
 use axum::Router;
 use tokio::net::TcpListener;
-use tokio::sync::broadcast::Receiver;
 
-use crate::routes::{payment_html_page, trigger_payment};
+use crate::interaction_sessions::InteractionSessions;
+use crate::routes::html_pages_and_triggers::html_pages_and_triggers_router;
 use crate::ws_tracing_subscriber::WebSocketAppender;
 use crate::{
-    active_payment::ActivePayments,
     bank::Bank,
     config::Settings,
     routes::{api::api_router, system::system_router},
@@ -26,7 +25,7 @@ pub struct Application {
 pub struct AppState {
     pub settings: Arc<Settings>,
     pub bank: Bank,
-    pub active_payments: ActivePayments,
+    pub interaction_sessions: InteractionSessions,
     pub ws_appender: WebSocketAppender,
 }
 
@@ -49,13 +48,11 @@ impl Application {
         let app_state = AppState {
             bank,
             settings: Arc::new(config),
-            active_payments: ActivePayments::new(),
+            interaction_sessions: InteractionSessions::new(),
             ws_appender,
         };
 
-        let app = Router::new()
-            .route("/payment_page/:id", routing::get(payment_html_page))
-            .route("/payment/:id", routing::post(trigger_payment))
+        let app = html_pages_and_triggers_router()
             .with_state(app_state.clone())
             .nest("/api", api_router(app_state.clone()))
             .nest("/system", system_router(app_state.clone()));

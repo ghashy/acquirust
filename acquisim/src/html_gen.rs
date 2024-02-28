@@ -1,6 +1,5 @@
 use askama::Template;
 use url::Url;
-use uuid::Uuid;
 
 #[derive(Template)]
 #[allow(dead_code)]
@@ -8,19 +7,34 @@ use uuid::Uuid;
 // for the purpose of determining the escaper for this template.
 // {{ "Escape <>&"|e }} with escape will be this: Escape &lt;&gt;&amp;
 // So we disable this
-#[template(path = "index.html", escape = "none")]
+#[template(path = "init_payment_page.html", escape = "none")]
 pub struct SubmitPaymentPage {
     price: i64,
-    payment_id: Uuid,
     submit_payment_url: Url,
 }
 
 impl SubmitPaymentPage {
-    pub fn new(price: i64, payment_id: Uuid, submit_payment_url: Url) -> Self {
+    pub fn new(price: i64, submit_payment_url: Url) -> Self {
         SubmitPaymentPage {
             price,
-            payment_id,
             submit_payment_url,
+        }
+    }
+}
+
+#[derive(Template)]
+#[allow(dead_code)]
+#[template(path = "card_token_registration_page.html", escape = "none")]
+pub struct SubmitCardNumberPage {
+    store_name: &'static str,
+    submit_card_number_url: Url,
+}
+
+impl SubmitCardNumberPage {
+    pub fn new(submit_card_number_url: Url) -> Self {
+        SubmitCardNumberPage {
+            submit_card_number_url,
+            store_name: "Harmonysphere",
         }
     }
 }
@@ -28,17 +42,13 @@ impl SubmitPaymentPage {
 #[cfg(test)]
 mod tests {
     use askama::Template;
-    use uuid::Uuid;
 
     use super::SubmitPaymentPage;
 
     #[test]
     fn test_template_creation() {
-        let page = SubmitPaymentPage::new(
-            10,
-            Uuid::new_v4(),
-            "http://mydomain/path".parse().unwrap(),
-        );
+        let page =
+            SubmitPaymentPage::new(10, "http://mydomain/path".parse().unwrap());
         assert!(page.render().is_ok())
     }
 }

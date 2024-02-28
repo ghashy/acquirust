@@ -1,11 +1,11 @@
 use time::OffsetDateTime;
 use uuid::Uuid;
 
-use crate::startup::AppState;
+use crate::RemovableById;
 
-pub fn watch_and_delete_active_payment(
-    app_state: AppState,
-    payment_id: Uuid,
+pub fn wait_and_remove(
+    object: impl RemovableById + Send + 'static,
+    id: Uuid,
     created_at: OffsetDateTime,
 ) {
     tokio::spawn(async move {
@@ -21,15 +21,15 @@ pub fn watch_and_delete_active_payment(
             }
         }
         // Removing payment
-        match app_state.active_payments.remove_payment(payment_id) {
+        match object.remove(id) {
             Ok(()) => {
                 tracing::info!(
-                    "Active payment with id: {payment_id} is deleted!"
+                    "Object with id: {id} is removed after {interval} time!"
                 )
             }
             Err(e) => {
                 tracing::error!(
-                    "Failed to remove active payment with id: {payment_id}, error: {e}"
+                    "Failed to remove object with id: {id}, error: {e}"
                 )
             }
         }
