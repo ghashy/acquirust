@@ -24,12 +24,16 @@ pub struct Credentials {
 
 pub fn html_pages_and_triggers_router() -> Router<AppState> {
     Router::new()
+        // Payment page
         .route("/payment_page/:id", routing::get(payment_html_page))
+        // Payment trigger
         .route("/payment/:id", routing::post(trigger_payment))
+        // Card token page
         .route(
             "/register_card_token_page/:id",
             routing::get(card_token_registration_html_page),
         )
+        // Card token trigger
         .route(
             "/card_token/:id",
             routing::get(trigger_card_token_registration),
