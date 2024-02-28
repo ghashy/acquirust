@@ -937,7 +937,7 @@ where
 {
     let formatted_date = date
         .format(&time::format_description::well_known::Rfc3339)
-        .map_err(S::Error::custom)?;
+        .map_err(Error::custom)?;
     serializer.serialize_str(&formatted_date)
 }
 
