@@ -98,10 +98,6 @@ struct BankInner {
 }
 
 impl Bank {
-    async fn lock(&self) -> MutexGuard<BankInner> {
-        self.0.lock().await
-    }
-
     pub async fn subscribe(&self) -> Receiver<()> {
         self.lock().await.notifier.subscribe()
     }
@@ -260,47 +256,10 @@ impl Bank {
         guard.store_account.clone()
     }
 
-    fn balance(
-        &self,
-        guard: &MutexGuard<'_, BankInner>,
-        account: &Account,
-    ) -> i64 {
-        let balance = guard
-            .transactions
-            .iter()
-            .filter(|&transaction| {
-                transaction.sender.eq(&account)
-                    || transaction.recipient.eq(&account)
-            })
-            .fold(0i64, |amount, transaction| {
-                if transaction.sender.eq(&account) {
-                    amount - transaction.amount
-                } else {
-                    amount + transaction.amount
-                }
-            });
-        balance
-    }
-
     pub async fn store_balance(&self) -> i64 {
         let guard = self.lock().await;
         let store_acc = &guard.store_account;
         self.balance(&guard, store_acc)
-    }
-
-    fn account_transactions(
-        &self,
-        guard: &MutexGuard<'_, BankInner>,
-        acc: &Account,
-    ) -> Vec<Transaction> {
-        guard
-            .transactions
-            .iter()
-            .filter(|&transaction| {
-                transaction.sender.eq(&acc) || transaction.recipient.eq(&acc)
-            })
-            .cloned()
-            .collect()
     }
 
     pub async fn new_transaction(
@@ -367,14 +326,6 @@ impl Bank {
         self.balance(&guard, &guard.emission_account)
     }
 
-    /// I want to notify my subscribers to update their accounts info
-    /// after every bank lock
-    fn notify(guard: &MutexGuard<'_, BankInner>) {
-        if let Err(e) = guard.notifier.send(()) {
-            tracing::error!("Failed to send bank lock notification: {e}");
-        }
-    }
-
     pub async fn new_card_token(
         &self,
         card: CardNumber,
@@ -385,6 +336,56 @@ impl Bank {
         guard.tokens.insert(token.clone(), card);
         Ok(token)
     }
+
+    fn balance(
+        &self,
+        guard: &MutexGuard<'_, BankInner>,
+        account: &Account,
+    ) -> i64 {
+        let balance = guard
+            .transactions
+            .iter()
+            .filter(|&transaction| {
+                transaction.sender.eq(&account)
+                    || transaction.recipient.eq(&account)
+            })
+            .fold(0i64, |amount, transaction| {
+                if transaction.sender.eq(&account) {
+                    amount - transaction.amount
+                } else {
+                    amount + transaction.amount
+                }
+            });
+        balance
+    }
+
+    fn account_transactions(
+        &self,
+        guard: &MutexGuard<'_, BankInner>,
+        acc: &Account,
+    ) -> Vec<Transaction> {
+        guard
+            .transactions
+            .iter()
+            .filter(|&transaction| {
+                transaction.sender.eq(&acc) || transaction.recipient.eq(&acc)
+            })
+            .cloned()
+            .collect()
+    }
+
+    /// I want to notify my subscribers to update their accounts info
+    /// after every bank lock
+    fn notify(guard: &MutexGuard<'_, BankInner>) {
+        if let Err(e) = guard.notifier.send(()) {
+            tracing::error!("Failed to send bank lock notification: {e}");
+        }
+    }
+
+    async fn lock(&self) -> MutexGuard<BankInner> {
+        self.0.lock().await
+    }
+
 }
 
 fn generate_token() -> String {
