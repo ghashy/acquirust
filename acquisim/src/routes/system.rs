@@ -188,7 +188,7 @@ async fn handle_accounts_subscriber(
 
     loop {
         tokio::select! {
-            notification = rx.recv() => {
+            notification = rx.changed() => {
                 match notification {
                     Ok(()) => {
                         if let Err(e) = ws

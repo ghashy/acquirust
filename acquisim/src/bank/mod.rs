@@ -8,7 +8,7 @@ use time::{
     format_description::well_known::iso8601::TimePrecision, OffsetDateTime,
 };
 use tokio::sync::{
-    broadcast::{Receiver, Sender},
+    watch::{Receiver, Sender},
     Mutex, MutexGuard, TryLockError,
 };
 
@@ -94,7 +94,6 @@ struct BankInner {
     store_account: Account,
     bank_username: String,
     notifier: Sender<()>,
-    _subscriber: Receiver<()>,
 }
 
 impl Bank {
@@ -104,7 +103,7 @@ impl Bank {
 
     /// Constructor
     pub fn new(cashbox_pass: &Secret<String>, bank_username: &str) -> Self {
-        let (tx, rx) = tokio::sync::broadcast::channel(100);
+        let (tx, _) = tokio::sync::watch::channel(());
 
         let emission_account = Account {
             card_number: CardNumber::generate(),
@@ -126,7 +125,6 @@ impl Bank {
             transactions: Vec::new(),
             bank_username: bank_username.to_string(),
             notifier: tx,
-            _subscriber: rx,
         };
         Bank(Arc::new(Mutex::new(bank)))
     }
