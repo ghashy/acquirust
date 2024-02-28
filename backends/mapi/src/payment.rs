@@ -198,13 +198,13 @@ pub struct PaymentBuilder {
     language: Option<Language>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "NotificationURL")]
-    notification_url: Option<url::Url>,
+    notification_url: Option<Url>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "SuccessURL")]
-    success_url: Option<url::Url>,
+    success_url: Option<Url>,
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "FailURL")]
-    fail_url: Option<url::Url>,
+    fail_url: Option<Url>,
     #[serde(
         skip_serializing_if = "Option::is_none",
         serialize_with = "serialize_date_rfc3339"
@@ -400,7 +400,7 @@ where
     match date {
         Some(date) => {
             let formatted_date =
-                format_date_rfc3339(date).map_err(S::Error::custom)?;
+                format_date_rfc3339(date).map_err(Error::custom)?;
             serializer.serialize_str(&formatted_date)
         }
         None => {

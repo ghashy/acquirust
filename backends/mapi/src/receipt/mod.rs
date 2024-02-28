@@ -254,7 +254,7 @@ pub struct Receipt {
     #[serde(skip_serializing_if = "Option::is_none")]
     email: Option<Email>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    phone: Option<phonenumber::PhoneNumber>,
+    phone: Option<PhoneNumber>,
     #[serde(skip_serializing_if = "Option::is_none")]
     customer: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -285,7 +285,7 @@ pub struct ReceiptBuilder {
     ffd_version: Option<FfdVersion>,
     client_info: Option<ClientInfo>,
     taxation: Taxation,
-    phone: Option<phonenumber::PhoneNumber>,
+    phone: Option<PhoneNumber>,
     email: Option<Email>,
     customer: Option<String>,
     customer_inn: Option<String>,
@@ -418,7 +418,7 @@ fn serialize_date_simple<S>(
 where
     S: Serializer,
 {
-    let s = date.format(SIMPLE_DATE_FORMAT).map_err(S::Error::custom)?;
+    let s = date.format(SIMPLE_DATE_FORMAT).map_err(Error::custom)?;
     serializer.serialize_str(&s)
 }
 
