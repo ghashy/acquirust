@@ -83,11 +83,13 @@ impl InitPaymentRequest {
 }
 
 impl Tokenizable for InitPaymentRequest {
-    fn generate_token(&self, password: &Secret<String>) -> String {
-        self.generate_token(password)
-    }
-    fn token(&self) -> &str {
-        &self.token
+    fn validate_token(&self, password: &Secret<String>) -> Result<(), ()> {
+        let token = self.generate_token(password);
+        if token.eq(&self.token) {
+            Ok(())
+        } else {
+            Err(())
+        }
     }
 }
 

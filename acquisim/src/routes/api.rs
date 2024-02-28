@@ -100,9 +100,7 @@ where
     Response: Operation + Serialize + 'static,
 {
     // Authorize request
-    let token = req.generate_token(&state.settings.terminal_settings.password);
-
-    if !token.eq(req.token()) {
+    if req.validate_token(&state.settings.terminal_settings.password).is_err() {
         tracing::warn!("Unauthorized request");
         return Err(ApiError::UnauthorizedError);
     }

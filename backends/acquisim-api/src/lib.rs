@@ -14,8 +14,7 @@ pub enum OperationStatus {
 }
 
 pub trait Tokenizable {
-    fn generate_token(&self, password: &Secret<String>) -> String;
-    fn token(&self) -> &str;
+    fn validate_token(&self, password: &Secret<String>) -> Result<(), ()>;
 }
 
 pub trait Operation {
