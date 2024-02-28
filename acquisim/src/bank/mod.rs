@@ -78,7 +78,7 @@ impl Account {
     }
 }
 
-impl std::cmp::PartialEq for Account {
+impl PartialEq for Account {
     fn eq(&self, other: &Self) -> bool {
         self.card_number.eq(&other.card_number)
     }
@@ -268,7 +268,7 @@ impl Bank {
                 transaction.sender.eq(&account)
                     || transaction.recipient.eq(&account)
             })
-            .fold(0 as i64, |amount, transaction| {
+            .fold(0i64, |amount, transaction| {
                 if transaction.sender.eq(&account) {
                     amount - transaction.amount
                 } else {
@@ -400,7 +400,7 @@ mod tests {
     fn learn_merkle_tree_on_practice() {
         use rs_merkle::algorithms::Sha256;
 
-        let mut tree: MerkleTree<Sha256> = rs_merkle::MerkleTree::new();
+        let mut tree: MerkleTree<Sha256> = MerkleTree::new();
         let mut leaves =
             vec![Sha256::hash("a".as_bytes()), Sha256::hash("b".as_bytes())];
         tree.append(&mut leaves);
