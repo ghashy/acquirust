@@ -52,6 +52,8 @@ pub struct InitPaymentRequest {
 }
 
 impl InitPaymentRequest {
+    /// If you want to perform split payment, include store's card token
+    /// and all others into the beneficiaries list.
     pub fn new(
         notification_url: Url,
         success_url: Url,
