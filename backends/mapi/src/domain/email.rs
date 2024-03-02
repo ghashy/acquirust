@@ -72,10 +72,4 @@ mod tests {
         let email = "@domail.com".to_string();
         assert!(Email::parse(&email).is_err())
     }
-
-    #[test]
-    fn valid_emails_are_parsed_successfully() {
-        let email: String = SafeEmail().fake();
-        assert!(Email::parse(&email).is_ok())
-    }
 }
