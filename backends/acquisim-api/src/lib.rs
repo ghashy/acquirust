@@ -10,7 +10,7 @@ pub mod register_card_token;
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum OperationStatus {
     Success,
-    Fail,
+    Fail(String),
 }
 
 pub trait Tokenizable {
@@ -18,6 +18,6 @@ pub trait Tokenizable {
 }
 
 pub trait Operation {
-    fn operation_error() -> Self;
+    fn operation_error(reason: String) -> Self;
     fn operation_success(session_ui_url: Url) -> Self;
 }

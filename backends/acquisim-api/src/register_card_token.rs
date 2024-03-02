@@ -93,10 +93,10 @@ pub struct RegisterCardTokenResponse {
 }
 
 impl RegisterCardTokenResponse {
-    pub fn err() -> Self {
+    pub fn err(reason: String) -> Self {
         RegisterCardTokenResponse {
             registration_url: None,
-            status: OperationStatus::Fail,
+            status: OperationStatus::Fail(reason),
         }
     }
 
@@ -109,8 +109,8 @@ impl RegisterCardTokenResponse {
 }
 
 impl Operation for RegisterCardTokenResponse {
-    fn operation_error() -> Self {
-        RegisterCardTokenResponse::err()
+    fn operation_error(reason: String) -> Self {
+        RegisterCardTokenResponse::err(reason)
     }
 
     fn operation_success(session_ui_url: Url) -> Self {
@@ -128,10 +128,10 @@ pub struct RegisterCardTokenOperationResult {
 }
 
 impl RegisterCardTokenOperationResult {
-    pub fn err() -> Self {
+    pub fn err(reason: String) -> Self {
         RegisterCardTokenOperationResult {
             card_token: None,
-            operation_status: OperationStatus::Fail,
+            operation_status: OperationStatus::Fail(reason),
         }
     }
 
