@@ -17,6 +17,7 @@ serde_json = "1.0.114"
 
 # Utility and miscellaneous dependencies
 url = { version = "2.5.0", features = ["serde"] }
+rust_decimal = "1.33.1"
 
 # Security
 secrecy = { version = "0.8.0", features = ["serde"] }
