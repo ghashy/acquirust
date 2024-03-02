@@ -5,6 +5,7 @@ pub use acquiconnect::*;
 use url::Url;
 
 pub mod init_payment;
+pub mod make_payment;
 pub mod register_card_token;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
