@@ -8,6 +8,10 @@ use url::Url;
 
 use crate::{Operation, OperationStatus, Tokenizable};
 
+use self::beneficiaries::Beneficiaries;
+
+pub mod beneficiaries;
+
 // ───── Api Action ───────────────────────────────────────────────────────── //
 
 pub struct InitPayment;
@@ -35,6 +39,7 @@ impl ApiAction for InitPayment {
 // ───── Request Type ─────────────────────────────────────────────────────── //
 
 /// Initial payment operation, basic of acquiring
+/// If there are more than zero beneficiaries, it is `SPLIT PAYMENT`.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InitPaymentRequest {
     /// Currently unused
@@ -42,6 +47,7 @@ pub struct InitPaymentRequest {
     pub success_url: Url,
     pub fail_url: Url,
     pub amount: i64,
+    pub beneficiaries: beneficiaries::Beneficiaries,
     token: String,
 }
 
@@ -52,6 +58,7 @@ impl InitPaymentRequest {
         fail_url: Url,
         amount: i64,
         cashbox_password: &Secret<String>,
+        beneficiaries: Option<Beneficiaries>,
     ) -> Self {
         let mut req = InitPaymentRequest {
             notification_url,
@@ -59,6 +66,7 @@ impl InitPaymentRequest {
             fail_url,
             amount,
             token: String::new(),
+            beneficiaries: beneficiaries.unwrap_or(Beneficiaries::NONE),
         };
         req.token = req.generate_token(cashbox_password);
         req
@@ -71,6 +79,10 @@ impl InitPaymentRequest {
         token_map.insert("fail_url", self.fail_url.to_string());
         token_map.insert("amount", self.amount.to_string());
         token_map.insert("password", cashbox_password.expose_secret().clone());
+
+        if !self.beneficiaries.is_empty() {
+            token_map.insert("beneficiaries", self.beneficiaries.as_str());
+        }
 
         let concatenated: String = token_map.into_values().collect();
         let mut hasher: Sha256 = Digest::new();
@@ -97,25 +109,30 @@ impl Tokenizable for InitPaymentRequest {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InitPaymentResponse {
+    pub status: OperationStatus,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub payment_url: Option<Url>,
 }
 
 impl InitPaymentResponse {
-    pub fn err() -> Self {
-        InitPaymentResponse { payment_url: None }
+    pub fn err(reason: String) -> Self {
+        InitPaymentResponse {
+            payment_url: None,
+            status: OperationStatus::Fail(reason),
+        }
     }
 
     pub fn success(payment_url: Url) -> Self {
         InitPaymentResponse {
             payment_url: Some(payment_url),
+            status: OperationStatus::Success,
         }
     }
 }
 
 impl Operation for InitPaymentResponse {
-    fn operation_error() -> InitPaymentResponse {
-        Self::err()
+    fn operation_error(reason: String) -> InitPaymentResponse {
+        Self::err(reason)
     }
 
     fn operation_success(session_ui_url: Url) -> InitPaymentResponse {
@@ -131,9 +148,9 @@ pub struct PaymentOperationNotification {
 }
 
 impl PaymentOperationNotification {
-    pub fn err() -> Self {
+    pub fn err(reason: String) -> Self {
         PaymentOperationNotification {
-            operation_status: OperationStatus::Fail,
+            operation_status: OperationStatus::Fail(reason),
         }
     }
 
