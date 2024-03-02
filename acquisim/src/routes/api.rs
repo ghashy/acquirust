@@ -1,10 +1,11 @@
+use acquisim_api::make_payment::{MakePaymentRequest, MakePaymentResponse};
 use acquisim_api::{Operation, Tokenizable};
 use axum::{
     extract::State, http::StatusCode, response::IntoResponse, routing, Json,
     Router,
 };
 
-use serde::{Serialize};
+use serde::Serialize;
 use tokio::sync::TryLockError;
 use url::Url;
 
@@ -38,6 +39,7 @@ pub fn api_router(state: AppState) -> Router {
                 >,
             ),
         )
+        .route("/MakePayment", routing::post(make_payment))
         .with_state(state)
 }
 
@@ -51,13 +53,18 @@ where
     Response: Operation + Serialize + 'static,
 {
     // Authorize request
-    if req.validate_token(&state.settings.terminal_settings.password).is_err() {
+    if req
+        .validate_token(&state.settings.terminal_settings.password)
+        .is_err()
+    {
         tracing::warn!("Unauthorized request");
         return Json(Response::operation_error("Unauthorized".to_string()));
     }
 
+    let bank_handler = state.bank.handler().await;
+
     // We have only one store account in our virtual bank
-    let store_card = state.bank.get_store_account().await.card();
+    let store_card = bank_handler.get_store_account().card();
 
     let session = req.create_session(store_card);
     let id = session.id();
@@ -79,7 +86,10 @@ where
 
     let url = format!(
         "{}:{}/{}/{}",
-        state.settings.addr, state.settings.port, Request::page_endpoint(), id
+        state.settings.addr,
+        state.settings.port,
+        Request::page_endpoint(),
+        id
     );
 
     let session_ui_url = match Url::parse(&url) {
@@ -92,5 +102,42 @@ where
         }
     };
 
-    Ok(Json(Response::operation_success(session_ui_url)))
+    Json(Response::operation_success(session_ui_url))
+}
+
+#[tracing::instrument(name = "Make payment", skip_all)]
+async fn make_payment(
+    State(state): State<AppState>,
+    Json(req): Json<MakePaymentRequest>,
+) -> Json<MakePaymentResponse> {
+    // Authorize request
+    if req
+        .validate_token(&state.settings.terminal_settings.password)
+        .is_err()
+    {
+        tracing::warn!("Unauthorized request");
+        return Json(MakePaymentResponse::err("Unauthorized".to_string()));
+    }
+
+    let mut bank_handler = state.bank.handler().await;
+
+    // We have only one store account in our virtual bank
+    let store = bank_handler.get_store_account();
+
+    let recipient =
+        match bank_handler.get_account_by_token(&req.recipient_token) {
+            Ok(acc) => acc,
+            Err(e) => {
+                tracing::error!("Failed to find account by card token: {e}");
+                return Json(MakePaymentResponse::err(e.to_string()));
+            }
+        };
+
+    match bank_handler.new_transaction(&store, &recipient, req.amount) {
+        Ok(()) => Json(MakePaymentResponse::success()),
+        Err(e) => {
+            tracing::error!("Failed to make transaction: {e}");
+            Json(MakePaymentResponse::err(e.to_string()))
+        }
+    }
 }
