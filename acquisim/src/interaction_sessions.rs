@@ -70,7 +70,7 @@ impl Session {
         self.id
     }
 
-    pub fn new_payment_session(
+    fn new_payment_session(
         req: InitPaymentRequest,
         store_card: CardNumber,
     ) -> Self {
@@ -82,7 +82,7 @@ impl Session {
         }
     }
 
-    pub fn new_card_token_registration_session(
+    fn new_card_token_registration_session(
         req: RegisterCardTokenRequest,
         store_card: CardNumber,
     ) -> Self {
