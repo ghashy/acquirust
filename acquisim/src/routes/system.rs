@@ -16,8 +16,10 @@ use crate::domain::requests::system_api::AddAccountRequest;
 use crate::domain::requests::system_api::DeleteAccountRequest;
 use crate::domain::requests::system_api::NewTransactionRequest;
 use crate::domain::requests::system_api::OpenCreditRequest;
-use crate::domain::responses::system_api::{AddAccountResponse, ListCardTokensResponse};
 use crate::domain::responses::system_api::ListAccountsResponse;
+use crate::domain::responses::system_api::{
+    AddAccountResponse, ListCardTokensResponse,
+};
 use crate::error_chain_fmt;
 use crate::middleware::BasicAuthLayer;
 use crate::startup::AppState;
@@ -76,7 +78,7 @@ async fn add_account(
     State(state): State<AppState>,
     Json(req): Json<AddAccountRequest>,
 ) -> Result<Json<AddAccountResponse>, SystemApiError> {
-    let card_number = state.bank.add_account(&req.password).await;
+    let card_number = state.bank.handler().await.add_account(&req.password);
     Ok(Json(AddAccountResponse { card_number }))
 }
 
@@ -85,7 +87,7 @@ async fn delete_account(
     State(state): State<AppState>,
     Json(req): Json<DeleteAccountRequest>,
 ) -> Result<StatusCode, SystemApiError> {
-    state.bank.delete_account(req.card_number).await?;
+    state.bank.handler().await.delete_account(req.card_number)?;
     Ok(StatusCode::OK)
 }
 
@@ -93,7 +95,7 @@ async fn delete_account(
 async fn list_accounts(
     State(state): State<AppState>,
 ) -> Result<Json<ListAccountsResponse>, SystemApiError> {
-    let accounts = state.bank.list_accounts().await;
+    let accounts = state.bank.handler().await.list_accounts();
     Ok(Json(ListAccountsResponse { accounts }))
 }
 
@@ -102,7 +104,11 @@ async fn open_credit(
     State(state): State<AppState>,
     Json(req): Json<OpenCreditRequest>,
 ) -> Result<StatusCode, SystemApiError> {
-    state.bank.open_credit(req.card_number, req.amount).await?;
+    state
+        .bank
+        .handler()
+        .await
+        .open_credit(req.card_number, req.amount)?;
     Ok(StatusCode::OK)
 }
 
@@ -111,12 +117,10 @@ async fn new_transaction(
     State(state): State<AppState>,
     Json(req): Json<NewTransactionRequest>,
 ) -> Result<StatusCode, SystemApiError> {
-    let sender = state.bank.find_account(&req.from).await?;
-    let receiver = state.bank.find_account(&req.to).await?;
-    state
-        .bank
-        .new_transaction(&sender, &receiver, req.amount)
-        .await?;
+    let mut bank_handler = state.bank.handler().await;
+    let sender = bank_handler.find_account(&req.from)?;
+    let receiver = bank_handler.find_account(&req.to)?;
+    bank_handler.new_transaction(&sender, &receiver, req.amount)?;
     Ok(StatusCode::OK)
 }
 
@@ -124,25 +128,26 @@ async fn new_transaction(
 async fn list_transactions(
     State(state): State<AppState>,
 ) -> Json<Vec<Transaction>> {
-    Json(state.bank.list_transactions().await)
+    Json(state.bank.handler().await.list_transactions())
 }
 
 #[tracing::instrument(name = "Get bank emission", skip_all)]
 async fn emission(State(state): State<AppState>) -> String {
-    state.bank.bank_emission().await.to_string()
+    state.bank.handler().await.bank_emission().to_string()
 }
 
 #[tracing::instrument(name = "Get store balance", skip_all)]
 async fn store_balance(State(state): State<AppState>) -> String {
-    state.bank.store_balance().await.to_string()
+    state.bank.handler().await.store_balance().to_string()
 }
 
 #[tracing::instrument(name = "Get store card number", skip_all)]
 async fn store_card(State(state): State<AppState>) -> String {
     state
         .bank
-        .get_store_account()
+        .handler()
         .await
+        .get_store_account()
         .card()
         .as_ref()
         .to_string()
@@ -181,7 +186,7 @@ async fn handle_accounts_subscriber(
     fut: upgrade::UpgradeFut,
 ) -> Result<(), WebSocketError> {
     let mut ws = fastwebsockets::FragmentCollector::new(fut.await?);
-    let mut rx = state.bank.subscribe().await;
+    let mut rx = state.bank.handler().await.subscribe();
 
     loop {
         tokio::select! {

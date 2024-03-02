@@ -83,6 +83,8 @@ pub async fn payment_html_page(
     }
 }
 
+/// Handle payment, actually.
+///
 /// We return `String` with redirection url.
 #[tracing::instrument(name = "Trigger payment", skip_all)]
 pub async fn trigger_payment(
@@ -102,12 +104,11 @@ pub async fn trigger_payment(
         }
     };
     let req = session.session_type.payment_req();
+    let mut bank_handler = state.bank.handler().await;
 
-    // Authorize card and password
-    let account = match state
-        .bank
+    // Authorize payer's card and password
+    let account = match bank_handler
         .authorize_account(&creds.card_number, &creds.password)
-        .await
     {
         Ok(acc) => acc,
         Err(e) => {
@@ -118,18 +119,24 @@ pub async fn trigger_payment(
     };
 
     // Check store account
-    let store_account = state.bank.get_store_account().await;
+    let store_account = bank_handler.get_store_account();
     if !store_account.card().eq(&session.store_card) {
         tracing::error!("Failed to perform payment: wrong store account!");
         return Ok(req.fail_url.to_string());
     }
 
     // Perform transaction
-    let result = match state
-        .bank
-        .new_transaction(&account, &store_account, req.amount)
-        .await
-    {
+    let result = if !req.beneficiaries.is_empty() {
+        bank_handler.new_transaction(&account, &store_account, req.amount)
+    } else {
+        bank_handler.new_split_transaction(
+            &account,
+            req.amount,
+            &req.beneficiaries,
+        )
+    };
+
+    match result {
         Ok(()) => {
             let notification = PaymentOperationNotification::success();
             state
@@ -142,9 +149,7 @@ pub async fn trigger_payment(
             tracing::error!("Transaction failed: {e}");
             Ok(req.fail_url.to_string())
         }
-    };
-
-    result
+    }
 }
 
 #[tracing::instrument(name = "Get card token registration html page", skip_all)]
@@ -203,6 +208,7 @@ pub async fn trigger_card_token_registration(
     };
 
     let req = session.session_type.register_card_token_req();
+    let mut bank_handler = state.bank.handler().await;
 
     // Authorize card and password
     let Ok(card) = CardNumber::parse(&body) else {
@@ -211,14 +217,14 @@ pub async fn trigger_card_token_registration(
     };
 
     // Check store account
-    let store_account = state.bank.get_store_account().await;
+    let store_account = bank_handler.get_store_account();
     if !store_account.card().eq(&session.store_card) {
         tracing::error!("Failed to register card token: wrong store account!");
         return Ok(req.fail_url.to_string());
     }
 
     // Generate token
-    let token = match state.bank.new_card_token(card).await {
+    let token = match bank_handler.new_card_token(card) {
         Ok(token) => token,
         Err(e) => {
             tracing::error!("Failed to generate new card token: {e}");
