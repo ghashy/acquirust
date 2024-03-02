@@ -13,60 +13,11 @@ use acquisim_api::register_card_token::{
     RegisterCardTokenRequest, RegisterCardTokenResponse,
 };
 
-
 use crate::interaction_sessions::{IntoSession, SessionError};
 use crate::{
     bank::BankOperationError, error_chain_fmt, startup::AppState,
     tasks::wait_and_remove,
 };
-
-// ───── Types ────────────────────────────────────────────────────────────── //
-
-#[derive(thiserror::Error)]
-enum ApiError {
-    #[error("Unexpected error")]
-    UnexpectedError(#[from] anyhow::Error),
-    #[error("Mutex lock error: {0}")]
-    MutexLockError(#[from] TryLockError),
-    #[error("Bank operation error: {0}")]
-    BankOperationError(#[from] BankOperationError),
-    #[error("Unauthorized operation")]
-    UnauthorizedError,
-    #[error("Active payment operation fail")]
-    SessionError(#[from] SessionError),
-    #[error("Failed to parse url")]
-    UrlParsingError(#[from] url::ParseError),
-}
-
-impl std::fmt::Debug for ApiError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        error_chain_fmt(self, f)
-    }
-}
-
-impl IntoResponse for ApiError {
-    fn into_response(self) -> axum::response::Response {
-        tracing::error!("System api error: {self}");
-        match self {
-            ApiError::MutexLockError(_) => {
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
-            ApiError::BankOperationError(_) => {
-                StatusCode::BAD_REQUEST.into_response()
-            }
-            ApiError::UnauthorizedError => {
-                StatusCode::UNAUTHORIZED.into_response()
-            }
-            ApiError::UnexpectedError(_) => {
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
-            ApiError::SessionError(_) => StatusCode::NOT_FOUND.into_response(),
-            ApiError::UrlParsingError(_) => {
-                StatusCode::INTERNAL_SERVER_ERROR.into_response()
-            }
-        }
-    }
-}
 
 // ───── Handlers ─────────────────────────────────────────────────────────── //
 
@@ -94,7 +45,7 @@ pub fn api_router(state: AppState) -> Router {
 async fn init_session<Request, Response>(
     State(state): State<AppState>,
     Json(req): Json<Request>,
-) -> Result<Json<impl Serialize + 'static>, ApiError>
+) -> Json<impl Serialize + 'static>
 where
     Request: Tokenizable + IntoSession,
     Response: Operation + Serialize + 'static,
@@ -102,7 +53,7 @@ where
     // Authorize request
     if req.validate_token(&state.settings.terminal_settings.password).is_err() {
         tracing::warn!("Unauthorized request");
-        return Err(ApiError::UnauthorizedError);
+        return Json(Response::operation_error("Unauthorized".to_string()));
     }
 
     // We have only one store account in our virtual bank
@@ -117,7 +68,9 @@ where
         Ok(result) => result,
         Err(e) => {
             tracing::error!("Failed to initiate session: {e}");
-            return Ok(Json(Response::operation_error()));
+            return Json(Response::operation_error(
+                "Internal error".to_string(),
+            ));
         }
     };
 
@@ -133,7 +86,9 @@ where
         Ok(url) => url,
         Err(e) => {
             tracing::error!("Failed to parse url: {e}");
-            return Ok(Json(Response::operation_error()));
+            return Json(Response::operation_error(
+                "Internal error".to_string(),
+            ));
         }
     };
 
