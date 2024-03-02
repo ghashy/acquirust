@@ -19,8 +19,18 @@ impl Beneficiaries {
         beneficiaries: Vec::new(),
     };
 
+    pub fn builder(card_token: String, part: Decimal) -> BeneficiariesBuilder {
+        BeneficiariesBuilder {
+            beneficiaries: vec![Beneficiar { card_token, part }],
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         self.beneficiaries.is_empty()
+    }
+
+    pub fn count(&self) -> usize {
+        self.beneficiaries.len()
     }
 
     pub fn as_str(&self) -> String {
@@ -39,7 +49,15 @@ impl Beneficiaries {
     }
 
     pub fn validate(&self) -> Result<(), ()> {
-        todo!()
+        let total = self
+            .beneficiaries
+            .iter()
+            .fold(Decimal::ZERO, |acc, sum| acc + sum.part);
+        if total != Decimal::ONE {
+            Err(())
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -50,28 +68,17 @@ pub struct BeneficiariesBuilder {
 }
 
 impl BeneficiariesBuilder {
-    pub fn new(card_token: String, part: Decimal) -> BeneficiariesBuilder {
-        BeneficiariesBuilder {
-            beneficiaries: vec![Beneficiar { card_token, part }],
-        }
+    pub fn add(mut self, card_token: String, part: Decimal) -> Self {
+        self.beneficiaries.push(Beneficiar { card_token, part });
+        self
     }
 
-    pub fn add(&mut self, card_token: String, part: Decimal) {
-        self.beneficiaries.push(Beneficiar { card_token, part })
-    }
-
-    pub(crate) fn build(self) -> Result<Beneficiaries, ()> {
-        let total = self
-            .beneficiaries
-            .iter()
-            .fold(Decimal::ZERO, |acc, sum| acc + sum.part);
-        if total != Decimal::ONE {
-            Err(())
-        } else {
-            Ok(Beneficiaries {
-                beneficiaries: self.beneficiaries,
-            })
-        }
+    pub fn build(self) -> Result<Beneficiaries, ()> {
+        let beneficiaries = Beneficiaries {
+            beneficiaries: self.beneficiaries,
+        };
+        beneficiaries.validate()?;
+        Ok(beneficiaries)
     }
 }
 
@@ -82,8 +89,10 @@ pub struct BeneficiariesIterator<'a> {
 }
 
 impl<'a> Iterator for BeneficiariesIterator<'a> {
-    type Item = &'a str;
+    type Item = (&'a str, Decimal);
     fn next(&mut self) -> Option<Self::Item> {
-        self.internal.next().map(|inner| inner.card_token.as_str())
+        self.internal
+            .next()
+            .map(|inner| (inner.card_token.as_str(), inner.part))
     }
 }
