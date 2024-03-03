@@ -3,8 +3,8 @@ name = "airactions"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "Main trait and client for acquirust"
-repository = "https://github.com/ghashy/acquirust"
+description = "Main trait and client for airactions"
+repository = "https://github.com/ghashy/airactions"
 
 
 [dependencies]
