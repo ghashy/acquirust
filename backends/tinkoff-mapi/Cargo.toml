@@ -1,10 +1,10 @@
 [package]
-name = "mapi"
+name = "tinkoff-mapi"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-acquiconnect = { path = "../../acquiconnect" }
+airactions = { path = "../../airactions" }
 reqwest = { version = "0.11.23", default-features = false, features = [
   "json",
   "rustls-tls",

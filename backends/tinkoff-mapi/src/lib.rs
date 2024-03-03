@@ -10,8 +10,8 @@ use time::format_description::well_known::iso8601::TimePrecision;
 use time::format_description::well_known::Iso8601;
 use url::Url;
 
-pub use acquiconnect::AcquiClient;
-use acquiconnect::ApiAction;
+use airactions::ApiAction;
+pub use airactions::Client;
 
 use self::payment::Payment;
 
@@ -70,7 +70,7 @@ impl ApiAction for InitPaymentAction {
         req: Self::Request,
         addr: Url,
         client: &reqwest::Client,
-    ) -> Result<Self::Response, acquiconnect::ClientError> {
+    ) -> Result<Self::Response, airactions::ClientError> {
         let response =
             client.post(addr).json(&req.inner()).send().await.unwrap();
         Ok(response.json().await?)

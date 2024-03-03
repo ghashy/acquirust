@@ -1,10 +1,9 @@
-// Restafaire
 use std::future::Future;
 
 use reqwest::IntoUrl;
 use url::Url;
 
-pub use reqwest::Client;
+pub use reqwest::Client as ReqwestClient;
 pub use reqwest::StatusCode;
 
 #[derive(thiserror::Error)]
@@ -80,7 +79,7 @@ pub trait ApiAction {
     fn perform_action(
         req: Self::Request,
         addr: Url,
-        client: &Client,
+        client: &ReqwestClient,
     ) -> impl Future<Output = Result<Self::Response, ClientError>> + Send;
 }
 
@@ -91,15 +90,15 @@ impl std::fmt::Debug for ClientError {
 }
 
 #[derive(Clone, Debug)]
-pub struct AcquiClient {
-    client: Client,
+pub struct Client {
+    client: ReqwestClient,
     address: Url,
 }
 
-impl AcquiClient {
+impl Client {
     pub fn new(url: impl IntoUrl) -> Result<Self, ClientError> {
-        Ok(AcquiClient {
-            client: Client::new(),
+        Ok(Client {
+            client: reqwest::Client::new(),
             address: url.into_url()?,
         })
     }
@@ -122,7 +121,7 @@ mod tests {
     use serde::Deserialize;
     use url::Url;
 
-    use super::{AcquiClient, ApiAction, ClientError};
+    use super::{ApiAction, Client, ClientError};
 
     pub struct SayHello;
     pub struct SimpleRequest(pub String);
@@ -147,7 +146,7 @@ mod tests {
 
     #[tokio::test]
     async fn it_works() {
-        let client = AcquiClient::new("https://happydog.org").unwrap();
+        let client = Client::new("https://happydog.org").unwrap();
         let response = client
             .execute(SayHello, SimpleRequest("Dog".to_string()))
             .await

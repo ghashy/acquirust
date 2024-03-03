@@ -1,7 +1,7 @@
 use secrecy::Secret;
 use serde::{Deserialize, Serialize};
 
-pub use acquiconnect::*;
+pub use airactions::*;
 use url::Url;
 
 pub mod init_payment;

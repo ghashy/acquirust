@@ -1,7 +1,7 @@
 use crate::{Operation, OperationStatus, Tokenizable};
 use std::collections::BTreeMap;
 
-use acquiconnect::{ApiAction, Client, ClientError};
+use airactions::{ApiAction, ClientError, ReqwestClient};
 use secrecy::{ExposeSecret, Secret};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -22,7 +22,7 @@ impl ApiAction for RegisterCardToken {
     async fn perform_action(
         req: Self::Request,
         addr: Url,
-        client: &Client,
+        client: &ReqwestClient,
     ) -> Result<Self::Response, ClientError> {
         match client.post(addr).json(&req).send().await {
             Ok(response) => Ok(response.json().await?),

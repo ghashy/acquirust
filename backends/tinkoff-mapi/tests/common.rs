@@ -1,5 +1,3 @@
-// test
-
 use mapi::domain::{Email, Kopeck};
 use mapi::payment::{OrderId, Payment, TerminalType};
 use mapi::payment_data::{OperationInitiatorType, PaymentData};
@@ -51,8 +49,7 @@ async fn abc() {
             .build()
             .unwrap();
 
-    let client =
-        mapi::AcquiClient::new("https://securepay.tinkoff.ru/v2").unwrap();
+    let client = mapi::Client::new("https://securepay.tinkoff.ru/v2").unwrap();
     let response = client.execute(InitPaymentAction, payment).await.unwrap();
     dbg!(response);
 }

@@ -2,6 +2,6 @@
 members = [
     "airactions",
     "backends/banksim-api",
-    "backends/mapi"
+    "backends/tinkoff-mapi"
 ]
 resolver = "2"
