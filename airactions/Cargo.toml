@@ -8,7 +8,7 @@ repository = "https://github.com/ghashy/acquirust"
 
 
 [dependencies]
-reqwest = { version = "0.11.23", default-features = false, features = [
+reqwest = { version = "0.11.24", default-features = false, features = [
   "json",
 ] }
 thiserror = "1.0.56"
