@@ -1,8 +1,7 @@
 [workspace]
 members = [
-    "acquiconnect",
-    "acquisim",
-    "backends/acquisim-api",
+    "airactions",
+    "backends/banksim-api",
     "backends/mapi"
 ]
 resolver = "2"
