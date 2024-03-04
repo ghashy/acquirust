@@ -4,9 +4,9 @@ Bindings for [banksim](https://github.com/ghashy/banksim)
 
 Additionally, there is [acqui](https://github.com/ghashy/acqui), written in Swift for macOS, which serves as an banksim management client.
 
-> It is not finished, and currently only the `Init` method is supported. In the future, there are plans to implement other methods and potentially encapsulate all methods into a single interface with various pluggable backends.
+> It is not finished. In the future, there are plans to implement other methods and potentially encapsulate all methods into a single interface with various pluggable backends.
 
-This library is being developed concurrently with [harmonysphere](https://harmonysphere.ru), and all features will be gradually made available.
+This library is being developed concurrently with [harmonysphere](https://harmonysphere.ru), and features will be gradually made available.
 
 ### Currently supported:
 
