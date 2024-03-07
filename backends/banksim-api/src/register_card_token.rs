@@ -6,6 +6,7 @@ use secrecy::{ExposeSecret, Secret};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use url::Url;
+use uuid::Uuid;
 
 // ───── Api Action ───────────────────────────────────────────────────────── //
 
@@ -38,6 +39,7 @@ pub struct RegisterCardTokenRequest {
     pub notification_url: Url,
     pub fail_url: Url,
     pub success_url: Url,
+    pub req_id: Uuid,
     token: String,
 }
 
@@ -46,6 +48,7 @@ impl RegisterCardTokenRequest {
         notification_url: Url,
         success_url: Url,
         fail_url: Url,
+        req_id: Uuid,
         cashbox_password: &Secret<String>,
     ) -> Self {
         let mut req = RegisterCardTokenRequest {
@@ -53,6 +56,7 @@ impl RegisterCardTokenRequest {
             token: String::new(),
             fail_url,
             success_url,
+            req_id,
         };
         req.token = req.generate_token(cashbox_password);
         req
@@ -125,20 +129,23 @@ pub struct RegisterCardTokenOperationResult {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub card_token: Option<String>,
     pub operation_status: OperationStatus,
+    pub req_id: Uuid,
 }
 
 impl RegisterCardTokenOperationResult {
-    pub fn err(reason: String) -> Self {
+    pub fn err(reason: String, req_id: Uuid) -> Self {
         RegisterCardTokenOperationResult {
             card_token: None,
             operation_status: OperationStatus::Fail(reason),
+            req_id,
         }
     }
 
-    pub fn success(token: String) -> Self {
+    pub fn success(token: String, req_id: Uuid) -> Self {
         RegisterCardTokenOperationResult {
             card_token: Some(token),
             operation_status: OperationStatus::Success,
+            req_id,
         }
     }
 }
