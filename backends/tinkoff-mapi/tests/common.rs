@@ -1,12 +1,12 @@
-use mapi::domain::{Email, Kopeck};
-use mapi::payment::{OrderId, Payment, TerminalType};
-use mapi::payment_data::{OperationInitiatorType, PaymentData};
-use mapi::receipt::item::{
+use rust_decimal::Decimal;
+use tinkoff_mapi::domain::{Email, Kopeck};
+use tinkoff_mapi::payment::{OrderId, Payment, TerminalType};
+use tinkoff_mapi::payment_data::{OperationInitiatorType, PaymentData};
+use tinkoff_mapi::receipt::item::{
     CashBoxType, Ffd105Data, Item, SupplierInfo, VatType,
 };
-use mapi::receipt::{FfdVersion, Receipt, Taxation};
-use mapi::InitPaymentAction;
-use rust_decimal::Decimal;
+use tinkoff_mapi::receipt::{FfdVersion, Receipt, Taxation};
+use tinkoff_mapi::InitPaymentAction;
 
 #[tokio::test]
 async fn abc() {
@@ -49,7 +49,8 @@ async fn abc() {
             .build()
             .unwrap();
 
-    let client = mapi::Client::new("https://securepay.tinkoff.ru/v2").unwrap();
+    let client =
+        tinkoff_mapi::Client::new("https://securepay.tinkoff.ru/v2").unwrap();
     let response = client.execute(InitPaymentAction, payment).await.unwrap();
     dbg!(response);
 }

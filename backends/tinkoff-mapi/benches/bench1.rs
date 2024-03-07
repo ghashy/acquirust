@@ -1,12 +1,12 @@
 // benches/my_benchmark.rs
 
 use criterion::{criterion_group, criterion_main, Criterion};
-use mapi::domain::{Email, Kopeck};
-use mapi::payment::{OrderId, Payment, TerminalType};
-use mapi::payment_data::{OperationInitiatorType, PaymentData};
-use mapi::receipt::item::{Ffd105Data, Item, SupplierInfo};
-use mapi::receipt::{FfdVersion, Receipt};
 use rust_decimal::Decimal;
+use tinkoff_mapi::domain::{Email, Kopeck};
+use tinkoff_mapi::payment::{OrderId, Payment, TerminalType};
+use tinkoff_mapi::payment_data::{OperationInitiatorType, PaymentData};
+use tinkoff_mapi::receipt::item::{Ffd105Data, Item, SupplierInfo};
+use tinkoff_mapi::receipt::{FfdVersion, Receipt};
 
 fn benchmark_payment_json_creation(c: &mut Criterion) {
     c.bench_function("payment_json_creation", |b| {
@@ -17,8 +17,8 @@ fn benchmark_payment_json_creation(c: &mut Criterion) {
                 Kopeck::from_rub("12".parse().unwrap()).unwrap(),
                 "12".parse().unwrap(),
                 Kopeck::from_rub("10".parse().unwrap()).unwrap(),
-                mapi::receipt::item::VatType::None,
-                Some(mapi::receipt::item::CashBoxType::Atol),
+                tinkoff_mapi::receipt::item::VatType::None,
+                Some(tinkoff_mapi::receipt::item::CashBoxType::Atol),
             )
             .with_ffd_105_data(Ffd105Data::builder().build().unwrap())
             .with_supplier_info(
@@ -31,13 +31,14 @@ fn benchmark_payment_json_creation(c: &mut Criterion) {
             )
             .build()
             .unwrap();
-            let receipt =
-                Receipt::builder(mapi::receipt::Taxation::UsnIncomeOutcome)
-                    .with_ffd_version(FfdVersion::Ver1_05)
-                    .with_phone("+79210127878".parse().unwrap())
-                    .add_item(item)
-                    .build()
-                    .unwrap();
+            let receipt = Receipt::builder(
+                tinkoff_mapi::receipt::Taxation::UsnIncomeOutcome,
+            )
+            .with_ffd_version(FfdVersion::Ver1_05)
+            .with_phone("+79210127878".parse().unwrap())
+            .add_item(item)
+            .build()
+            .unwrap();
             let payment_data = PaymentData::builder()
                 .with_operation_initiator_type(OperationInitiatorType::CIT_CNC)
                 .with_phone("+79312211603".parse().unwrap())
