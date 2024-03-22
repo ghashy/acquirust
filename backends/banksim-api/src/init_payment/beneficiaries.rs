@@ -34,12 +34,10 @@ impl Beneficiaries {
     }
 
     pub fn as_str(&self) -> String {
-        self.beneficiaries
-            .iter()
-            .fold(String::new(), |mut acc, next| {
-                acc.push_str(&next.card_token);
-                acc
-            })
+        self.beneficiaries.iter().fold(String::new(), |mut acc, next| {
+            acc.push_str(&next.card_token);
+            acc
+        })
     }
 
     pub fn iter_tokens(&self) -> BeneficiariesIterator<'_> {
