@@ -1,4 +1,5 @@
-use crate::{Operation, OperationError, OperationStatus, Tokenizable};
+use crate::OperationStatus;
+use crate::Tokenizable;
 use std::collections::BTreeMap;
 
 use airactions::{ApiAction, ClientError, ReqwestClient};
@@ -10,15 +11,35 @@ use uuid::Uuid;
 
 // ───── Api Action ───────────────────────────────────────────────────────── //
 
-pub struct RegisterCardToken;
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum Webhook {
+    Confirm,
+    Capture,
+    Cancel,
+}
 
-impl ApiAction for RegisterCardToken {
-    type Request = RegisterCardTokenRequest;
-    type Response = RegisterCardTokenResponse;
+impl std::fmt::Display for Webhook {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Webhook::Confirm => f.write_str("Confirm"),
+            Webhook::Capture => f.write_str("Capture"),
+            Webhook::Cancel => f.write_str("Cancel"),
+        }
+    }
+}
+
+impl ApiAction for Webhook {
+    type Request = WebhookRequest;
+    type Response = WebhookResponse;
 
     fn url_path(&self) -> &'static str {
-        "/session/init/card_token_registration"
+        match self {
+            Webhook::Confirm => "/session/confirm",
+            Webhook::Capture => "/session/capture",
+            Webhook::Cancel => "/session/cancel",
+        }
     }
+
     async fn perform_action(
         req: Self::Request,
         addr: Url,
@@ -34,35 +55,32 @@ impl ApiAction for RegisterCardToken {
 // ───── Request Type ─────────────────────────────────────────────────────── //
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct RegisterCardTokenRequest {
-    pub notification_url: Url,
-    pub success_url: Url,
-    pub fail_url: Url,
+pub struct WebhookRequest {
+    pub webhook: Webhook,
+    pub session_id: Uuid,
     token: String,
 }
 
-impl RegisterCardTokenRequest {
+impl WebhookRequest {
     pub fn new(
-        notification_url: Url,
-        success_url: Url,
-        fail_url: Url,
+        webhook: Webhook,
+        session_id: Uuid,
         cashbox_password: &Secret<String>,
     ) -> Self {
-        let mut req = RegisterCardTokenRequest {
-            notification_url,
+        let mut req = WebhookRequest {
+            session_id,
             token: String::new(),
-            fail_url,
-            success_url,
+            webhook,
         };
         req.token = req.generate_token(cashbox_password);
         req
     }
+
     pub fn generate_token(&self, cashbox_password: &Secret<String>) -> String {
         let mut token_map = BTreeMap::new();
-        token_map.insert("notification_url", self.notification_url.to_string());
-        token_map.insert("fail_url", self.fail_url.to_string());
-        token_map.insert("success_url", self.success_url.to_string());
+        token_map.insert("session_id", self.session_id.to_string());
         token_map.insert("password", cashbox_password.expose_secret().clone());
+        token_map.insert("webhook", self.webhook.to_string());
 
         let concatenated: String = token_map.into_values().collect();
         let mut hasher: Sha256 = Digest::new();
@@ -74,7 +92,7 @@ impl RegisterCardTokenRequest {
     }
 }
 
-impl Tokenizable for RegisterCardTokenRequest {
+impl Tokenizable for WebhookRequest {
     fn validate_token(&self, password: &Secret<String>) -> Result<(), ()> {
         let token = self.generate_token(password);
         if token.eq(&self.token) {
@@ -88,25 +106,23 @@ impl Tokenizable for RegisterCardTokenRequest {
 // ───── Response Type ────────────────────────────────────────────────────── //
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct RegisterCardTokenResponse {
-    pub registration_url: Option<Url>,
-    pub operation_id: Option<Uuid>,
+pub struct WebhookResponse {
+    pub session_id: Uuid,
     pub status: OperationStatus,
 }
 
-impl Operation for RegisterCardTokenResponse {
-    fn operation_error(err: OperationError) -> Self {
-        RegisterCardTokenResponse {
-            registration_url: None,
-            operation_id: None,
-            status: OperationStatus::Fail(err),
-        }
-    }
-    fn operation_success(session_ui_url: Url, id: Uuid) -> Self {
-        RegisterCardTokenResponse {
-            registration_url: Some(session_ui_url),
-            operation_id: Some(id),
-            status: OperationStatus::Success,
-        }
-    }
-}
+// impl_request_action!(
+//     Confirm,
+//     ConfirmRequest,
+//     ConfirmResponse,
+//     "/session/confirm"
+// );
+
+// impl_request_action!(
+//     Capture,
+//     CaptureRequest,
+//     CaptureResponse,
+//     "/session/capture"
+// );
+
+// impl_request_action!(Cancel, CancelRequest, CancelResponse, "/session/cancel");

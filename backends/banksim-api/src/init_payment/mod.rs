@@ -5,8 +5,9 @@ use secrecy::{ExposeSecret, Secret};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use url::Url;
+use uuid::Uuid;
 
-use crate::{Operation, OperationStatus, Tokenizable};
+use crate::{Operation, OperationError, OperationStatus, Tokenizable};
 
 use self::beneficiaries::Beneficiaries;
 
@@ -21,9 +22,8 @@ impl ApiAction for InitPayment {
     type Response = InitPaymentResponse;
 
     fn url_path(&self) -> &'static str {
-        "/api/InitPayment"
+        "/session/init/payment"
     }
-
     async fn perform_action(
         req: Self::Request,
         addr: Url,
@@ -38,13 +38,15 @@ impl ApiAction for InitPayment {
 
 // ───── Request Type ─────────────────────────────────────────────────────── //
 
-/// Initial payment operation, basic of acquiring
+/// Initial payment operation
 /// If there are more than zero beneficiaries, it is `SPLIT PAYMENT`.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct InitPaymentRequest {
-    /// Currently unused
+    /// Webhooks url
     pub notification_url: Url,
+    /// Success redirect url
     pub success_url: Url,
+    /// Fail redirect url
     pub fail_url: Url,
     pub amount: i64,
     pub beneficiaries: beneficiaries::Beneficiaries,
@@ -73,7 +75,6 @@ impl InitPaymentRequest {
         req.token = req.generate_token(cashbox_password);
         req
     }
-
     pub fn generate_token(&self, cashbox_password: &Secret<String>) -> String {
         let mut token_map = BTreeMap::new();
         token_map.insert("notification_url", self.notification_url.to_string());
@@ -113,52 +114,24 @@ impl Tokenizable for InitPaymentRequest {
 pub struct InitPaymentResponse {
     pub status: OperationStatus,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub payment_id: Option<Uuid>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub payment_url: Option<Url>,
 }
 
-impl InitPaymentResponse {
-    pub fn err(reason: String) -> Self {
+impl Operation for InitPaymentResponse {
+    fn operation_error(err: OperationError) -> InitPaymentResponse {
         InitPaymentResponse {
             payment_url: None,
-            status: OperationStatus::Fail(reason),
+            status: OperationStatus::Fail(err),
+            payment_id: None,
         }
     }
-
-    pub fn success(payment_url: Url) -> Self {
+    fn operation_success(session_ui_url: Url, id: Uuid) -> InitPaymentResponse {
         InitPaymentResponse {
-            payment_url: Some(payment_url),
+            payment_url: Some(session_ui_url),
             status: OperationStatus::Success,
-        }
-    }
-}
-
-impl Operation for InitPaymentResponse {
-    fn operation_error(reason: String) -> InitPaymentResponse {
-        Self::err(reason)
-    }
-
-    fn operation_success(session_ui_url: Url) -> InitPaymentResponse {
-        InitPaymentResponse::success(session_ui_url)
-    }
-}
-
-// ───── Notification Type ────────────────────────────────────────────────── //
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct PaymentOperationNotification {
-    pub operation_status: OperationStatus,
-}
-
-impl PaymentOperationNotification {
-    pub fn err(reason: String) -> Self {
-        PaymentOperationNotification {
-            operation_status: OperationStatus::Fail(reason),
-        }
-    }
-
-    pub fn success() -> Self {
-        PaymentOperationNotification {
-            operation_status: OperationStatus::Success,
+            payment_id: Some(id),
         }
     }
 }
