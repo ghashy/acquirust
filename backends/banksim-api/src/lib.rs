@@ -18,13 +18,19 @@ pub enum OperationStatus {
     Fail(OperationError),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, thiserror::Error)]
 pub enum OperationError {
+    #[error("Unexpected")]
     Unexpected(String),
+    #[error("Bad request")]
     BadRequest,
+    #[error("Session not found")]
     SessionNotFound,
+    #[error("Session was cancelled")]
     Cancelled,
+    #[error("Failed: {reason}")]
     Failed { reason: String },
+    #[error("Request not authorized")]
     NotAuthorizedRequest,
 }
 
