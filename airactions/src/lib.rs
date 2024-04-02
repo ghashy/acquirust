@@ -116,6 +116,31 @@ impl Client {
     }
 }
 
+// trait Execute {
+//     type Req;
+//     type Resp;
+//     async fn execute(
+//         data: Self::Req,
+//         base_url: Url,
+//         client: &ReqwestClient,
+//     ) -> Result<Self::Resp, ClientError>;
+// }
+
+// impl<T> Execute for T
+// where
+//     T: ApiAction,
+// {
+//     type Req = T::Request;
+//     type Resp = T::Response;
+//     async fn execute(
+//         data: T::Request,
+//         base_url: Url,
+//         client: &ReqwestClient,
+//     ) -> Result<T::Response, ClientError> {
+//         T::perform_action(data, base_url.join(T::url_path())?, client).await
+//     }
+// }
+
 #[cfg(test)]
 mod tests {
     use serde::Deserialize;
