@@ -56,21 +56,15 @@ impl ApiAction for Webhook {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct WebhookRequest {
-    pub webhook: Webhook,
     pub session_id: Uuid,
     token: String,
 }
 
 impl WebhookRequest {
-    pub fn new(
-        webhook: Webhook,
-        session_id: Uuid,
-        cashbox_password: &Secret<String>,
-    ) -> Self {
+    pub fn new(session_id: Uuid, cashbox_password: &Secret<String>) -> Self {
         let mut req = WebhookRequest {
             session_id,
             token: String::new(),
-            webhook,
         };
         req.token = req.generate_token(cashbox_password);
         req
@@ -80,7 +74,6 @@ impl WebhookRequest {
         let mut token_map = BTreeMap::new();
         token_map.insert("session_id", self.session_id.to_string());
         token_map.insert("password", cashbox_password.expose_secret().clone());
-        token_map.insert("webhook", self.webhook.to_string());
 
         let concatenated: String = token_map.into_values().collect();
         let mut hasher: Sha256 = Digest::new();
