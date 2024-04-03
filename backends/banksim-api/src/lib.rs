@@ -10,6 +10,7 @@ pub mod make_payment;
 pub mod notifications;
 pub mod register_card_token;
 pub mod session;
+pub mod token_info;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum OperationStatus {
