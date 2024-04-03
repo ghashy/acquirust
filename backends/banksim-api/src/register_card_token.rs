@@ -17,7 +17,7 @@ impl ApiAction for RegisterCardToken {
     type Response = RegisterCardTokenResponse;
 
     fn url_path(&self) -> &'static str {
-        "/session/init/card_token_registration"
+        "/session/init/card_token_reg"
     }
     async fn perform_action(
         req: Self::Request,
